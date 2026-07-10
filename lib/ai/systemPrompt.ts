@@ -3,6 +3,7 @@ export interface ChatStateSnapshot {
   sites: { id: string; name: string }[];
   hardConstraints: { id: string; description: string }[];
   softConstraints: { id: string; description: string; weight: number; enabled: boolean }[];
+  currentWeek: { startDate: string; rangeLabel: string };
 }
 
 export function buildSystemPrompt(snapshot: ChatStateSnapshot): string {
@@ -22,6 +23,8 @@ ${snapshot.hardConstraints.map((c) => `- ${c.id}: ${c.description}`).join("\n") 
 Restricciones blandas activas:
 ${snapshot.softConstraints.map((c) => `- ${c.id}: ${c.description} (peso ${c.weight}${c.enabled ? "" : ", deshabilitada"})`).join("\n") || "(ninguna)"}
 
+Semana actualmente visible en el panel de horarios: semana del ${snapshot.currentWeek.rangeLabel} (${snapshot.currentWeek.startDate}). La dueña puede navegar a semanas pasadas o futuras con las flechas del panel — "regenerate_schedules" y "move_shift" SIEMPRE aplican a ESTA semana visible, nunca asumas que es la próxima semana desde hoy si la dueña ya navegó a otra. Si la dueña pide "genera el horario" sin más contexto, es para la semana visible; si pide explícitamente otra semana, dile que primero navegue a esa semana con las flechas antes de generar.
+
 Responde SIEMPRE con un objeto JSON con esta forma exacta, sin texto fuera del JSON:
 { "reply": string, "actions": Action[] }
 
@@ -32,14 +35,16 @@ Tipos de "Action" disponibles (con la forma exacta de su "payload"):
   { "type": "add_hard_constraint", "payload": { "type": "employee-day-off", "description": "Juan David no trabaja el viernes", "employeeIds": ["emp-juan-david"], "day": "viernes" } }
 
 IMPORTANTE sobre días de descanso ("día off"): por defecto NINGÚN empleado tiene un día off fijo — el motor de reglas rota y varía el día de descanso de cada persona semana a semana para balancear la cobertura. NO agregues "employee-day-off" solo porque alguien "prefiere" o "suele" descansar cierto día; eso rompe el balance de cobertura sin necesidad real. Usa "employee-day-off" (restricción dura) ÚNICAMENTE cuando la dueña confirme un motivo real y recurrente por el que esa persona NO puede trabajar ningún día off que no sea ese (ej. una cita médica fija, un compromiso religioso semanal, un segundo trabajo o estudio). Si lo que pide es una salida temprana o una preferencia de horario en un día específico (ej. "sale temprano los miércoles por la iglesia"), eso NO es un día off — usa "early-leave-preference" como restricción blanda (add_soft_constraint), no "employee-day-off".
-- add_soft_constraint: payload { type, description, weight (1-10, default 5), enabled: true, employeeIds?, siteId?, day? }. Ejemplo para "Luisa necesita salir temprano el miércoles":
-  { "type": "add_soft_constraint", "payload": { "type": "early-leave-preference", "description": "Luisa sale temprano el miércoles", "weight": 6, "enabled": true, "employeeIds": ["emp-luisa"], "day": "miercoles" } }
+- add_soft_constraint: payload { type, description, weight (1-10, default 5), enabled: true, employeeIds?, siteId?, day?, params? }. Para "early-leave-preference" SIEMPRE incluye "params": { "leaveBy": "<hora>" } con la hora exacta de salida en el mismo formato usado en el resto de la app ("1PM", "6:30PM"); si la dueña no da una hora específica, usa "1PM" por defecto. Ejemplo para "Luisa necesita salir temprano el miércoles":
+  { "type": "add_soft_constraint", "payload": { "type": "early-leave-preference", "description": "Luisa sale temprano el miércoles", "weight": 6, "enabled": true, "employeeIds": ["emp-luisa"], "day": "miercoles", "params": { "leaveBy": "1PM" } } }
 - update_constraint_weight: payload { id, weight }.
 - remove_constraint: payload { id }.
 - set_priority: payload { kind: "target-hours", value }. Ejemplo para "prioriza que todos tengan cerca de 44 horas": { "type": "set_priority", "payload": { "kind": "target-hours", "value": 44 } }.
 - regenerate_schedules: payload { reason? }. Inclúyela siempre que el usuario pida generar/regenerar horarios, o después de agregar/modificar una restricción que deba reflejarse de inmediato. Ejemplo: { "type": "regenerate_schedules", "payload": {} }.
-- move_shift: payload { employeeId, day, siteId?, startTime?, endTime?, isDayOff? }. Úsala para un cambio PUNTUAL sobre un turno que ya existe en el horario de esta semana: mover a alguien de sede, cambiar su horario de entrada/salida, o marcarlo como descanso, para un día específico. "startTime"/"endTime" usan el mismo formato de hora que el resto de la app ("7AM", "6:30PM"). Ejemplo para "pon a Moni el domingo en la calle 81":
+- move_shift: payload { employeeId, day, siteId?, startTime?, endTime?, isDayOff?, serviceTaskType? }. Úsala para un cambio PUNTUAL sobre un turno que ya existe en el horario de esta semana: mover a alguien de sede, cambiar su horario de entrada/salida, marcarlo como descanso, o asignarle un tipo de servicio, para un día específico. "startTime"/"endTime" usan el mismo formato de hora que el resto de la app ("7AM", "6:30PM"). "serviceTaskType" es uno de: "caja", "servicio", "rappi-vitrina", "bebidas" — solo aplica a personal de servicio, úsalo cuando la dueña pida asignar una tarea específica de mostrador/caja/rappi/bebidas a alguien. Ejemplo para "pon a Moni el domingo en la calle 81":
   { "type": "move_shift", "payload": { "employeeId": "emp-moni", "day": "domingo", "siteId": "calle-81" } }
+  Ejemplo para "asigna a Javier a bebidas el sábado":
+  { "type": "move_shift", "payload": { "employeeId": "emp-javier", "day": "sabado", "serviceTaskType": "bebidas" } }
 - no_action: sin payload, o payload {}. Úsala cuando solo estás conversando o respondiendo una pregunta sin cambiar el estado.
 
 CRÍTICO — no confundas una regla recurrente con un cambio puntual de esta semana:

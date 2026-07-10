@@ -1,5 +1,5 @@
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "openai/gpt-4o-mini";
+const MODEL = "openai/gpt-4.1";
 
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant";

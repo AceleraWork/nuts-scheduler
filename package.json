@@ -17,6 +17,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
+    "googleapis": "^173.0.0",
     "immer": "^11.1.11",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

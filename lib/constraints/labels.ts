@@ -9,6 +9,7 @@ export const HARD_CONSTRAINT_TYPES: HardConstraintType[] = [
   "skill-required-for-task",
   "employee-day-off",
   "employee-blocked-by-training",
+  "custom-hard-directive",
 ];
 
 export const HARD_CONSTRAINT_LABELS: Record<HardConstraintType, string> = {
@@ -20,6 +21,7 @@ export const HARD_CONSTRAINT_LABELS: Record<HardConstraintType, string> = {
   "skill-required-for-task": "Requiere habilidad específica para la tarea",
   "employee-day-off": "Día de descanso fijo",
   "employee-blocked-by-training": "Bloqueado por una capacitación",
+  "custom-hard-directive": "Otro (personalizado)",
 };
 
 export const SOFT_CONSTRAINT_TYPES: SoftConstraintType[] = [
@@ -42,8 +44,28 @@ export const SOFT_CONSTRAINT_LABELS: Record<SoftConstraintType, string> = {
   "custom-chat-directive": "Directiva personalizada (chat)",
 };
 
+/** Tipos donde varios días seleccionados se guardan como params.days en una sola constraint. */
 export const TYPES_WITH_DAYS_PARAM: (HardConstraintType | SoftConstraintType)[] = [
   "preferred-day-off-range",
   "pair-together-at-site",
   "site-reinforcement",
+];
+
+/** Tipos que usan el campo singular `day`; si se seleccionan varios días se crea una constraint por día. */
+export const TYPES_WITH_SINGLE_DAY_FIELD: (HardConstraintType | SoftConstraintType)[] = [
+  "employee-day-off",
+  "early-leave-preference",
+];
+
+/** Tipos donde `siteId` es parte inherente de la regla; si se seleccionan varias sedes se crea una constraint por sede. */
+export const TYPES_WITH_SITE_FIELD: (HardConstraintType | SoftConstraintType)[] = [
+  "employee-never-at-site",
+  "pair-together-at-site",
+  "site-reinforcement",
+];
+
+/** Tipos "otro/personalizado": no evaluados automáticamente por el motor, solo informativos. */
+export const CUSTOM_TYPES: (HardConstraintType | SoftConstraintType)[] = [
+  "custom-hard-directive",
+  "custom-chat-directive",
 ];

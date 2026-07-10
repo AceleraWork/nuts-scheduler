@@ -3,7 +3,9 @@ import { useChatStore } from "@/stores/useChatStore";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
 import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useSitesStore } from "@/stores/useSitesStore";
+import { useScheduleStore } from "@/stores/useScheduleStore";
 import { applyChatActions } from "@/lib/ai/applyChatActions";
+import { formatWeekRangeEs } from "@/lib/time/week";
 import type { ChatStateSnapshot } from "@/lib/ai/systemPrompt";
 import type { ChatMessage } from "@/types";
 
@@ -11,6 +13,7 @@ function buildSnapshot(): ChatStateSnapshot {
   const { employees } = useEmployeesStore.getState();
   const { hardConstraints, softConstraints } = useConstraintsStore.getState();
   const { sites } = useSitesStore.getState();
+  const { weekStartDate } = useScheduleStore.getState();
   return {
     employees: employees.map((e) => ({ id: e.id, name: e.name, area: e.area, status: e.status })),
     sites: sites.map((s) => ({ id: s.id, name: s.name })),
@@ -21,6 +24,7 @@ function buildSnapshot(): ChatStateSnapshot {
       weight: c.weight,
       enabled: c.enabled,
     })),
+    currentWeek: { startDate: weekStartDate, rangeLabel: formatWeekRangeEs(weekStartDate) },
   };
 }
 

@@ -14,6 +14,8 @@ const dayOfWeekSchema = z.enum([
 
 const siteIdSchema = z.enum(["calle-93", "calle-81"]);
 
+const serviceTaskTypeSchema = z.enum(["caja", "servicio", "rappi-vitrina", "bebidas"]);
+
 const hardConstraintTypeSchema = z.enum([
   "employee-never-at-site",
   "min-one-day-off",
@@ -23,6 +25,7 @@ const hardConstraintTypeSchema = z.enum([
   "skill-required-for-task",
   "employee-day-off",
   "employee-blocked-by-training",
+  "custom-hard-directive",
 ]);
 
 const softConstraintTypeSchema = z.enum([
@@ -80,6 +83,7 @@ export const chatActionSchema = z.discriminatedUnion("type", [
       startTime: z.string().optional(),
       endTime: z.string().optional(),
       isDayOff: z.boolean().optional(),
+      serviceTaskType: serviceTaskTypeSchema.optional(),
     }),
   }),
   z.object({ type: z.literal("no_action"), payload: z.object({}).optional() }),

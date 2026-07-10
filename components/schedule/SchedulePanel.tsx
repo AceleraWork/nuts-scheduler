@@ -9,14 +9,17 @@ import { ScheduleOptionTabs } from "@/components/schedule/ScheduleOptionTabs";
 import { SiteFilterTabs, type SiteFilter } from "@/components/schedule/SiteFilterTabs";
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { ScheduleSummaryFooter } from "@/components/schedule/ScheduleSummaryFooter";
-import { ScheduleWarningsBar } from "@/components/schedule/ScheduleWarningsBar";
-import { ExportButton } from "@/components/export/ExportButton";
+import { WeekNavHeader } from "@/components/schedule/WeekNavHeader";
+import { EmptyWeekState } from "@/components/schedule/EmptyWeekState";
+import { SaveSendMenu } from "@/components/export/SaveSendMenu";
+import { DownloadMenu } from "@/components/export/DownloadMenu";
 import { useScheduleStore, selectActiveOption } from "@/stores/useScheduleStore";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
 
 export function SchedulePanel() {
   const activeOption = useScheduleStore(selectActiveOption);
   const isGenerating = useScheduleStore((s) => s.isGenerating);
+  const isLoadingWeek = useScheduleStore((s) => s.isLoadingWeek);
   const regenerate = useScheduleStore((s) => s.regenerate);
   const employees = useEmployeesStore((s) => s.employees);
   const [siteFilter, setSiteFilter] = useState<SiteFilter>("todas");
@@ -37,21 +40,26 @@ export function SchedulePanel() {
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
         <SiteFilterTabs value={siteFilter} onChange={setSiteFilter} />
         <div className="flex items-center gap-2">
-          {activeOption && <ExportButton option={activeOption} employees={sortedEmployees} />}
-          <Button size="sm" onClick={regenerate} disabled={isGenerating}>
+          {activeOption && (
+            <>
+              <DownloadMenu option={activeOption} employees={sortedEmployees} />
+              <SaveSendMenu option={activeOption} employees={sortedEmployees} />
+            </>
+          )}
+          <Button size="sm" onClick={regenerate} disabled={isGenerating || isLoadingWeek}>
             <Sparkles className="size-3.5" />
             {isGenerating ? "Generando…" : "Generar horarios"}
           </Button>
         </div>
       </div>
-      <ScrollArea className="h-full flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-4">
-          {activeOption && (
-            <>
-              <ScheduleSummaryFooter option={activeOption} />
-              <ScheduleWarningsBar violations={activeOption.violations} />
-              <ScheduleGrid employees={sortedEmployees} option={activeOption} siteFilter={siteFilter} />
-            </>
+          {activeOption && <ScheduleSummaryFooter option={activeOption} />}
+          <WeekNavHeader />
+          {activeOption ? (
+            <ScheduleGrid employees={sortedEmployees} option={activeOption} siteFilter={siteFilter} />
+          ) : (
+            <EmptyWeekState />
           )}
         </div>
       </ScrollArea>

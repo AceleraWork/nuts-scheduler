@@ -9,7 +9,8 @@ export type HardConstraintType =
   | "onboarding-not-alone-critical"
   | "skill-required-for-task"
   | "employee-day-off"
-  | "employee-blocked-by-training";
+  | "employee-blocked-by-training"
+  | "custom-hard-directive";
 
 export type SoftConstraintType =
   | "early-leave-preference"

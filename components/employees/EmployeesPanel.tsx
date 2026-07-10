@@ -50,7 +50,7 @@ export function EmployeesPanel() {
           ))}
         </div>
       )}
-      <ScrollArea className="h-full flex-1 @container">
+      <ScrollArea className="min-h-0 flex-1 @container">
         <div className="space-y-6 p-4">
           <EmployeeSection title="Cocina" employees={cocina} onEdit={setEditingEmployee} />
           <EmployeeSection title="Servicio" employees={servicio} onEdit={setEditingEmployee} />

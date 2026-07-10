@@ -221,4 +221,8 @@ export const HARD_RULES: HardRule[] = [
       return violations;
     },
   },
+  {
+    type: "custom-hard-directive",
+    evaluate: () => [],
+  },
 ];

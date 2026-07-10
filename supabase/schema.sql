@@ -67,13 +67,15 @@ create table if not exists trainings (
 );
 
 create table if not exists schedule_options (
-  id text primary key, -- 'A' | 'B' | 'C'
+  id text primary key, -- '{week_start_date}_{option_id}', ej. '2026-07-13_A'
+  option_id text not null check (option_id in ('A', 'B', 'C')),
   label text not null,
   week_start_date date not null,
   score numeric not null default 0,
   violations jsonb not null default '[]',
   reasoning_summary text not null default '',
-  generated_at timestamptz not null default now()
+  generated_at timestamptz not null default now(),
+  unique (week_start_date, option_id)
 );
 
 create table if not exists shifts (
@@ -88,7 +90,8 @@ create table if not exists shifts (
   is_day_off boolean not null default false,
   is_early_leave boolean not null default false,
   is_training_block boolean not null default false,
-  training_event_id text references trainings(id)
+  training_event_id text references trainings(id),
+  service_task_type text
 );
 
 create index if not exists shifts_option_idx on shifts (schedule_option_id);

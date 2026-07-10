@@ -2,11 +2,11 @@ import { TriangleAlert, OctagonAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Violation } from "@/types";
 
-interface ScheduleWarningsBarProps {
+interface ViolationsListProps {
   violations: Violation[];
 }
 
-export function ScheduleWarningsBar({ violations }: ScheduleWarningsBarProps) {
+export function ViolationsList({ violations }: ViolationsListProps) {
   if (violations.length === 0) return null;
 
   return (

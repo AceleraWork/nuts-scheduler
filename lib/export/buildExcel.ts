@@ -1,9 +1,8 @@
 import ExcelJS from "exceljs";
 import { DAYS_OF_WEEK, DAY_LABELS } from "@/types";
 import type { Employee, ScheduleOption, HoursIndicator } from "@/types";
-import { formatShiftRange } from "@/lib/time/formatTime";
-import { getSiteName } from "@/stores/useSitesStore";
 import { getEmployeeWeeklyHours, getHoursIndicator } from "@/lib/solver/hours";
+import { shiftCellText } from "@/lib/export/scheduleRows";
 
 const INDICATOR_FILL: Record<HoursIndicator, string> = {
   green: "FFE5F0DF",
@@ -34,11 +33,7 @@ export async function buildScheduleExcel(option: ScheduleOption, employees: Empl
     const indicator = getHoursIndicator(hours);
     const rowValues: Record<string, string | number> = { employee: employee.name, hours };
     for (const day of DAYS_OF_WEEK) {
-      const shift = option.shifts.find((s) => s.employeeId === employee.id && s.day === day);
-      rowValues[day] =
-        !shift || shift.isDayOff
-          ? "Descanso"
-          : `${getSiteName(shift.siteId)} ${formatShiftRange(shift.startMinutes, shift.endMinutes)}`;
+      rowValues[day] = shiftCellText(option, employee.id, day);
     }
     const row = sheet.addRow(rowValues);
     const hoursCell = row.getCell("hours");

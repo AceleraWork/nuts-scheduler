@@ -69,7 +69,7 @@ export async function applyChatActions(actions: ChatAction[]): Promise<AppliedAc
         break;
       }
       case "move_shift": {
-        const { employeeId, day, siteId, startTime, endTime, isDayOff } = action.payload;
+        const { employeeId, day, siteId, startTime, endTime, isDayOff, serviceTaskType } = action.payload;
         const option = selectActiveOption(useScheduleStore.getState());
         const shift = option?.shifts.find((s) => s.employeeId === employeeId && s.day === day);
         if (!option || !shift) {
@@ -84,12 +84,15 @@ export async function applyChatActions(actions: ChatAction[]): Promise<AppliedAc
         if (siteId) patch.siteId = siteId;
         if (startTime) patch.startMinutes = parseHour12(startTime);
         if (endTime) patch.endMinutes = parseHour12(endTime);
+        if (serviceTaskType) patch.serviceTaskType = serviceTaskType;
         await useScheduleStore.getState().updateShift(option.id, shift.id, patch);
         applied.push({
           action,
-          summary: siteId
-            ? `Turno movido a ${getSiteName(siteId)} el ${day}.`
-            : `Turno del ${day} actualizado.`,
+          summary: serviceTaskType
+            ? `Turno del ${day} asignado a ${serviceTaskType}.`
+            : siteId
+              ? `Turno movido a ${getSiteName(siteId)} el ${day}.`
+              : `Turno del ${day} actualizado.`,
         });
         break;
       }

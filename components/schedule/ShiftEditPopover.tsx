@@ -15,7 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSitesStore } from "@/stores/useSitesStore";
 import { minutesToHHMM, hhmmToMinutes } from "@/lib/time/formatTime";
 import { useScheduleStore } from "@/stores/useScheduleStore";
-import type { Shift, ScheduleOptionId, SiteId } from "@/types";
+import { SERVICE_TASK_TYPES, SERVICE_TASK_TYPE_LABELS } from "@/lib/constants";
+import type { Shift, ScheduleOptionId, SiteId, ServiceTaskType } from "@/types";
+
+const NONE = "__none__";
 
 interface ShiftEditPopoverProps {
   shift: Shift;
@@ -33,6 +36,9 @@ export function ShiftEditPopover({ shift, optionId, children }: ShiftEditPopover
   const [start, setStart] = useState(minutesToHHMM(shift.startMinutes || 7 * 60));
   const [end, setEnd] = useState(minutesToHHMM(shift.endMinutes || 16 * 60));
   const [isEarlyLeave, setIsEarlyLeave] = useState(shift.isEarlyLeave ?? false);
+  const [serviceTaskType, setServiceTaskType] = useState<ServiceTaskType | typeof NONE>(
+    shift.serviceTaskType ?? NONE
+  );
 
   function handleOpenChange(next: boolean) {
     if (next) {
@@ -41,6 +47,7 @@ export function ShiftEditPopover({ shift, optionId, children }: ShiftEditPopover
       setStart(minutesToHHMM(shift.startMinutes || 7 * 60));
       setEnd(minutesToHHMM(shift.endMinutes || 16 * 60));
       setIsEarlyLeave(shift.isEarlyLeave ?? false);
+      setServiceTaskType(shift.serviceTaskType ?? NONE);
     }
     setOpen(next);
   }
@@ -52,6 +59,7 @@ export function ShiftEditPopover({ shift, optionId, children }: ShiftEditPopover
       startMinutes: isDayOff ? 0 : hhmmToMinutes(start),
       endMinutes: isDayOff ? 0 : hhmmToMinutes(end),
       isEarlyLeave: isDayOff ? false : isEarlyLeave,
+      serviceTaskType: isDayOff || serviceTaskType === NONE ? undefined : serviceTaskType,
     });
     setOpen(false);
   }
@@ -114,6 +122,32 @@ export function ShiftEditPopover({ shift, optionId, children }: ShiftEditPopover
               <Label>Salida temprana</Label>
               <Switch checked={isEarlyLeave} onCheckedChange={setIsEarlyLeave} />
             </div>
+
+            {shift.area === "servicio" && (
+              <div className="space-y-1.5">
+                <Label>Tipo de servicio</Label>
+                <Select
+                  value={serviceTaskType}
+                  onValueChange={(v) => setServiceTaskType(v as ServiceTaskType | typeof NONE)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>
+                      {(v: ServiceTaskType | typeof NONE) =>
+                        v === NONE ? "Ninguno" : SERVICE_TASK_TYPE_LABELS[v]
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Ninguno</SelectItem>
+                    {SERVICE_TASK_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {SERVICE_TASK_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </>
         )}
 

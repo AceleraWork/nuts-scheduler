@@ -4,12 +4,14 @@ import { DAYS_OF_WEEK, DAY_LABELS } from "@/types";
 import type { Employee, ScheduleOption } from "@/types";
 import { formatShiftRange } from "@/lib/time/formatTime";
 import { getSiteName } from "@/stores/useSitesStore";
+import { SERVICE_TASK_TYPE_LABELS } from "@/lib/constants";
 
 function shiftCellText(option: ScheduleOption, employeeId: string, day: (typeof DAYS_OF_WEEK)[number]): string {
   const shift = option.shifts.find((s) => s.employeeId === employeeId && s.day === day);
   if (!shift || shift.isDayOff) return "Descanso";
   const range = formatShiftRange(shift.startMinutes, shift.endMinutes);
-  return `${getSiteName(shift.siteId)}\n${range}${shift.isEarlyLeave ? " (sale temprano)" : ""}`;
+  const tag = shift.serviceTaskType ? ` (${SERVICE_TASK_TYPE_LABELS[shift.serviceTaskType]})` : "";
+  return `${getSiteName(shift.siteId)}\n${range}${shift.isEarlyLeave ? " (sale temprano)" : ""}${tag}`;
 }
 
 export function buildSchedulePdf(option: ScheduleOption, employees: Employee[]): jsPDF {
@@ -45,10 +47,13 @@ export function buildSchedulePdf(option: ScheduleOption, employees: Employee[]):
       body: DAYS_OF_WEEK.map((day) => {
         const shift = option.shifts.find((s) => s.employeeId === employee.id && s.day === day);
         if (!shift || shift.isDayOff) return [DAY_LABELS[day], "—", "Descanso"];
+        const tag = shift.serviceTaskType ? ` (${SERVICE_TASK_TYPE_LABELS[shift.serviceTaskType]})` : "";
         return [
           DAY_LABELS[day],
           getSiteName(shift.siteId),
-          formatShiftRange(shift.startMinutes, shift.endMinutes) + (shift.isEarlyLeave ? " (sale temprano)" : ""),
+          formatShiftRange(shift.startMinutes, shift.endMinutes) +
+            (shift.isEarlyLeave ? " (sale temprano)" : "") +
+            tag,
         ];
       }),
       styles: { fontSize: 10, cellPadding: 3 },

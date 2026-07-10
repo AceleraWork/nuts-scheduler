@@ -8,6 +8,7 @@ import { AlertTriangle, Loader2, LogOut, PanelLeftClose, PanelLeftOpen } from "l
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import { supabase } from "@/lib/supabase/client";
 import { signOut } from "@/lib/supabase/auth";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
@@ -153,10 +154,13 @@ export function AppShell({ children }: AppShellProps) {
             )}
           </Button>
         )}
-        <Button variant="ghost" size="sm" className="ml-auto" onClick={signOut}>
-          <LogOut className="size-3.5" />
-          Cerrar sesión
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <NotificationsBell />
+          <Button variant="ghost" size="sm" onClick={signOut}>
+            <LogOut className="size-3.5" />
+            Cerrar sesión
+          </Button>
+        </div>
       </header>
       <div className="flex-1 min-h-0">{children}</div>
     </div>

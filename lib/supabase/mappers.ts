@@ -156,6 +156,7 @@ export function shiftFromRow(row: Record<string, unknown>): Shift {
     isEarlyLeave: Boolean(row.is_early_leave),
     isTrainingBlock: Boolean(row.is_training_block),
     trainingEventId: (row.training_event_id as string | null) ?? undefined,
+    serviceTaskType: (row.service_task_type as Shift["serviceTaskType"]) ?? undefined,
   };
 }
 
@@ -173,12 +174,19 @@ export function shiftToRow(shift: Shift, scheduleOptionId: string): Record<strin
     is_early_leave: shift.isEarlyLeave ?? false,
     is_training_block: shift.isTrainingBlock ?? false,
     training_event_id: shift.trainingEventId ?? null,
+    service_task_type: shift.serviceTaskType ?? null,
   };
+}
+
+/** PK real en Supabase: schedule_options.id ya no es solo 'A'/'B'/'C' (eso ahora vive en
+ * `option_id`) sino ese valor prefijado por semana, para poder guardar varias semanas. */
+export function scheduleOptionRowId(weekStartDate: string, optionId: ScheduleOption["id"]): string {
+  return `${weekStartDate}_${optionId}`;
 }
 
 export function scheduleOptionFromRow(row: Record<string, unknown>, shifts: Shift[]): ScheduleOption {
   return {
-    id: row.id as ScheduleOption["id"],
+    id: row.option_id as ScheduleOption["id"],
     label: row.label as string,
     weekStartDate: row.week_start_date as string,
     shifts,
@@ -191,7 +199,8 @@ export function scheduleOptionFromRow(row: Record<string, unknown>, shifts: Shif
 
 export function scheduleOptionToRow(option: ScheduleOption): Record<string, unknown> {
   return {
-    id: option.id,
+    id: scheduleOptionRowId(option.weekStartDate, option.id),
+    option_id: option.id,
     label: option.label,
     week_start_date: option.weekStartDate,
     score: option.score,

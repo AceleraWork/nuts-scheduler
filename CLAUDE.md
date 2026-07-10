@@ -13,7 +13,7 @@ natural, con un motor de reglas que respeta restricciones duras/blandas.
   `components/ui/*` antes de asumir APIs de Radix/shadcn "clásico").
 - Zustand para estado global (sin `persist`/localStorage — la fuente de verdad es Supabase).
 - Supabase (Postgres + Auth) como backend.
-- OpenRouter (`openai/gpt-4o-mini`) para el chat IA, vía API route server-side.
+- OpenRouter (`openai/gpt-4.1`) para el chat IA, vía API route server-side.
 - `@dnd-kit` para drag & drop, `jspdf`/`jspdf-autotable` y `exceljs` para exportar.
 
 ## Arquitectura de datos
@@ -36,8 +36,25 @@ componentes/exportaciones que no pueden esperar una promesa (asume que el store 
 
 El motor de reglas (`lib/solver/*`) es puro y no toca Supabase directamente: recibe
 `employees/sites/hardConstraints/softConstraints/trainings` ya cargados y devuelve
-`ScheduleOption[]`. Quien sí persiste es `useScheduleStore` (regenerate/updateShift/swapShifts
-llaman a `lib/data/schedules.ts` después de mutar el estado local).
+`ScheduleOption[]`.
+
+**`useScheduleStore` es la única excepción al patrón "cada mutación persiste al toque"**:
+`regenerate`/`updateShift`/`swapShifts`/`revalidate` solo mutan el estado local en memoria,
+sin tocar Supabase — a propósito, porque la dueña no quiere que horarios a medio editar
+(por chat o drag&drop) se guarden solos. El único camino a Supabase es `saveActiveOption()`
+(botón "Guardar" en `SaveSendMenu.tsx`), que llama a `saveScheduleOption` en
+`lib/data/schedules.ts` y guarda solo la opción activa (A/B/C), no las otras dos variantes.
+Como excepción puntual a "sin persist/localStorage", `lib/storage/scheduleDraft.ts` guarda
+un espejo de `{ weekStartDate, options, activeOptionId }` en `localStorage` cada vez que
+cambia el estado **de la semana por defecto** (la próxima semana desde hoy, la única que
+`initialize()` restaura) — así un refresh o cierre de pestaña no borra ediciones aún no
+guardadas. `initialize()` lo usa como atajo (si el borrador coincide con la semana de hoy,
+se salta el fetch a Supabase); `goToWeek()` (flechas de navegación) NO lo consulta ni lo
+sobreescribe, para no pisar el borrador de la semana por defecto al solo pasar a ver otra
+semana. Si se cambia de semana y se vuelve, o se guarda con "Guardar", el borrador se
+resincroniza solo. Los otros 3 stores (`useEmployeesStore`, `useConstraintsStore`,
+`useTrainingsStore`) sí persisten cada mutación de inmediato a Supabase, sin localStorage,
+como antes.
 
 ## Autenticación
 
@@ -60,6 +77,11 @@ Correr en el SQL Editor de Supabase, en este orden:
 3. `supabase/auth-policies.sql` — reemplaza las políticas "allow all" por
    "solo autenticados".
 
+Pendiente de correr en el proyecto real: `supabase/migration-service-task-type.sql`
+(agrega `service_task_type` a `shifts` — instalaciones nuevas ya lo traen en `schema.sql`) y
+`supabase/migration-schedule-options-per-week.sql` (permite guardar horarios de varias
+semanas — antes `schedule_options.id` era solo 'A'/'B'/'C' sin distinguir semana).
+
 Y crear el usuario en Authentication → Users (email `kim@toroteam.com`, password
 `AdminNuts123!`, "Auto Confirm User" activado) — esto no se puede automatizar sin
 acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
@@ -69,6 +91,14 @@ acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
 - `OPENROUTER_API_KEY` — chat IA.
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — proyecto de Supabase del
   usuario (`https://dhdyjtmxnjtobmsxprdg.supabase.co`).
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`,
+  `GOOGLE_DRIVE_ROOT_FOLDER_ID` — export de horarios a Google Drive/Sheets
+  (`lib/google/*`, `app/api/export/drive/route.ts`). Fase inicial: crear una cuenta de
+  servicio en Google Cloud Console (IAM & Admin → Cuentas de servicio), habilitar las APIs
+  de Drive y Sheets, generar una llave JSON, compartir la carpeta del Drive de Acelera con
+  el email `...@...iam.gserviceaccount.com` de esa cuenta (permiso Editor), y usar el ID de
+  esa carpeta como `GOOGLE_DRIVE_ROOT_FOLDER_ID`. Sin estas 3 variables, el botón "Exportar
+  a Drive" muestra un error claro en vez de fallar silenciosamente.
 
 ## Motor de reglas (`lib/solver/`)
 

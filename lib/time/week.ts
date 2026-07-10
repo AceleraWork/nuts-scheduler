@@ -18,3 +18,50 @@ export function getDayOfWeekInWeek(dateISO: string, weekStartISO: string): DayOf
   if (diffDays < 0 || diffDays > 6) return null;
   return DAYS_OF_WEEK[diffDays];
 }
+
+const MONTHS_ES = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+/** Fecha ISO del lunes `deltaWeeks` semanas antes/después de `weekStartISO` (negativo = hacia atrás). */
+export function shiftWeekISO(weekStartISO: string, deltaWeeks: number): string {
+  const date = new Date(`${weekStartISO}T00:00:00`);
+  date.setDate(date.getDate() + deltaWeeks * 7);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Rango legible en español de la semana que arranca en `weekStartISO`, ej. "06 al 12 de julio". */
+export function formatWeekRangeEs(weekStartISO: string): string {
+  const start = new Date(`${weekStartISO}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const startDay = String(start.getDate()).padStart(2, "0");
+  const endDay = String(end.getDate()).padStart(2, "0");
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay} al ${endDay} de ${MONTHS_ES[start.getMonth()]}`;
+  }
+  return `${startDay} de ${MONTHS_ES[start.getMonth()]} al ${endDay} de ${MONTHS_ES[end.getMonth()]}`;
+}
+
+/** Mes + año en español de la semana que arranca en `weekStartISO`, ej. "Julio 2026". */
+export function formatMonthEs(weekStartISO: string): string {
+  const start = new Date(`${weekStartISO}T00:00:00`);
+  const month = MONTHS_ES[start.getMonth()];
+  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${start.getFullYear()}`;
+}
+
+/** Encabezado en mayúsculas para el panel de horarios, ej. "SEMANA DEL 22 AL 28 DE JUNIO". */
+export function formatWeekHeaderEs(weekStartISO: string): string {
+  return `SEMANA DEL ${formatWeekRangeEs(weekStartISO).toUpperCase()}`;
+}

@@ -1,7 +1,8 @@
-import { ChefHat, Coffee, Clock3 } from "lucide-react";
+import { ChefHat, Coffee, Clock3, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatShiftRange } from "@/lib/time/formatTime";
 import { getSiteName } from "@/stores/useSitesStore";
+import { SERVICE_TASK_TYPE_LABELS } from "@/lib/constants";
 import type { Shift } from "@/types";
 
 interface ShiftBlockProps {
@@ -39,6 +40,12 @@ export function ShiftBlock({ shift }: ShiftBlockProps) {
         <div className="flex items-center gap-1 text-[0.625rem] text-ink-mute">
           <Clock3 className="size-2.5" />
           <span>Salida temprana</span>
+        </div>
+      )}
+      {shift.serviceTaskType && (
+        <div className="flex items-center gap-1 text-[0.625rem] text-ink-mute">
+          <Tag className="size-2.5" />
+          <span>{SERVICE_TASK_TYPE_LABELS[shift.serviceTaskType]}</span>
         </div>
       )}
     </div>

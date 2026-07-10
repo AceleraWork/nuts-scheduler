@@ -35,6 +35,11 @@ export function RulesPanel() {
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const nameById = new Map(employees.map((e) => [e.id, e.name]));
 
+  function customLabel(c: HardConstraint | SoftConstraint): string | null {
+    if (c.type !== "custom-hard-directive" && c.type !== "custom-chat-directive") return null;
+    return (c.params?.customLabel as string) || null;
+  }
+
   function scopeLabel(c: HardConstraint | SoftConstraint): string | null {
     const parts: string[] = [];
     if (c.employeeIds?.length) {
@@ -79,7 +84,7 @@ export function RulesPanel() {
           </div>
         }
       />
-      <ScrollArea className="h-full flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-6 p-4">
           <Card className="gap-2 p-4 ring-border">
             <p className="label-caps text-ink-faint">Orden de prioridad del motor</p>
@@ -101,7 +106,14 @@ export function RulesPanel() {
                 {hardConstraints.map((c) => (
                   <Card key={c.id} className="gap-1 p-3 ring-border">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-ink">{c.description}</p>
+                      <div className="min-w-0">
+                        {customLabel(c) && (
+                          <Badge variant="outline" className="mb-1 border-border text-ink-mute">
+                            {customLabel(c)}
+                          </Badge>
+                        )}
+                        <p className="text-sm text-ink">{c.description}</p>
+                      </div>
                       <div className="flex shrink-0 items-center gap-0.5">
                         <Button
                           variant="ghost"
@@ -140,7 +152,14 @@ export function RulesPanel() {
                 {softConstraints.map((c) => (
                   <Card key={c.id} className="gap-1 p-3 ring-border">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-ink">{c.description}</p>
+                      <div className="min-w-0">
+                        {customLabel(c) && (
+                          <Badge variant="outline" className="mb-1 border-border text-ink-mute">
+                            {customLabel(c)}
+                          </Badge>
+                        )}
+                        <p className="text-sm text-ink">{c.description}</p>
+                      </div>
                       <div className="flex shrink-0 items-center gap-1">
                         <Badge
                           variant="outline"

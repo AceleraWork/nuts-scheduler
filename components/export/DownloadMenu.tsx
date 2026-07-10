@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Send, FileText, FileSpreadsheet, Mail } from "lucide-react";
+import { Download, FileText, FileSpreadsheet, Mail } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -14,7 +14,7 @@ import { buildSchedulePdf } from "@/lib/export/buildPdf";
 import { buildScheduleExcel } from "@/lib/export/buildExcel";
 import type { Employee, ScheduleOption } from "@/types";
 
-interface ExportButtonProps {
+interface DownloadMenuProps {
   option: ScheduleOption;
   employees: Employee[];
 }
@@ -28,7 +28,7 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ExportButton({ option, employees }: ExportButtonProps) {
+export function DownloadMenu({ option, employees }: DownloadMenuProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   async function handleExportPdf() {
@@ -63,8 +63,8 @@ export function ExportButton({ option, employees }: ExportButtonProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button size="sm" variant="outline" disabled={isExporting} />}>
-        <Send className="size-3.5" />
-        Enviar horarios
+        <Download className="size-3.5" />
+        Descargar
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleExportPdf}>
