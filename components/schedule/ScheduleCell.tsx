@@ -4,7 +4,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { ShiftBlock } from "@/components/schedule/ShiftBlock";
 import { ShiftEditPopover } from "@/components/schedule/ShiftEditPopover";
-import type { Shift, ScheduleOptionId } from "@/types";
+import { TrainingIndicator } from "@/components/schedule/TrainingIndicator";
+import type { Shift, ScheduleOptionId, TrainingEvent } from "@/types";
 import type { SiteFilter } from "@/components/schedule/SiteFilterTabs";
 
 interface ScheduleCellProps {
@@ -12,9 +13,10 @@ interface ScheduleCellProps {
   siteFilter: SiteFilter;
   optionId: ScheduleOptionId;
   draggable: boolean;
+  training?: TrainingEvent;
 }
 
-export function ScheduleCell({ shift, siteFilter, optionId, draggable }: ScheduleCellProps) {
+export function ScheduleCell({ shift, siteFilter, optionId, draggable, training }: ScheduleCellProps) {
   const droppable = useDroppable({ id: shift?.id ?? "empty", disabled: !draggable || !shift });
   const draggableState = useDraggable({ id: shift?.id ?? "empty", disabled: !draggable || !shift });
 
@@ -34,23 +36,26 @@ export function ScheduleCell({ shift, siteFilter, optionId, draggable }: Schedul
   }
 
   return (
-    <div
-      ref={droppable.setNodeRef}
-      className={cn(
-        "rounded-lg transition-shadow",
-        droppable.isOver && "ring-2 ring-gold ring-offset-1 ring-offset-canvas"
-      )}
-    >
+    <div className="relative">
       <div
-        ref={draggableState.setNodeRef}
-        {...draggableState.listeners}
-        {...draggableState.attributes}
-        className={cn(draggable && "cursor-grab active:cursor-grabbing", draggableState.isDragging && "opacity-40")}
+        ref={droppable.setNodeRef}
+        className={cn(
+          "rounded-lg transition-shadow",
+          droppable.isOver && "ring-2 ring-gold ring-offset-1 ring-offset-canvas"
+        )}
       >
-        <ShiftEditPopover shift={shift} optionId={optionId}>
-          <ShiftBlock shift={shift} />
-        </ShiftEditPopover>
+        <div
+          ref={draggableState.setNodeRef}
+          {...draggableState.listeners}
+          {...draggableState.attributes}
+          className={cn(draggable && "cursor-grab active:cursor-grabbing", draggableState.isDragging && "opacity-40")}
+        >
+          <ShiftEditPopover shift={shift} optionId={optionId}>
+            <ShiftBlock shift={shift} />
+          </ShiftEditPopover>
+        </div>
       </div>
+      {training && <TrainingIndicator training={training} />}
     </div>
   );
 }

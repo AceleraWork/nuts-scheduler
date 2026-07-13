@@ -1,11 +1,13 @@
 import type { HoursIndicator, Shift } from "@/types";
 import { shiftDurationHours } from "@/lib/time/formatTime";
-import { HOURS_INDICATOR_THRESHOLDS } from "@/lib/constants";
+import { OVERTIME_INDICATOR_THRESHOLDS, WEEKLY_TARGET_HOURS } from "@/lib/constants";
 
-export function getHoursIndicator(hours: number): HoursIndicator {
-  const { green, yellow } = HOURS_INDICATOR_THRESHOLDS;
-  if (hours >= green.min && hours <= green.max) return "green";
-  if (yellow.some((range) => hours >= range.min && hours <= range.max)) return "yellow";
+/** Color según horas EXTRA (hours - targetHours), no horas totales absolutas. */
+export function getHoursIndicator(hours: number, targetHours: number = WEEKLY_TARGET_HOURS): HoursIndicator {
+  const overtime = hours - targetHours;
+  const { green, yellow } = OVERTIME_INDICATOR_THRESHOLDS;
+  if (overtime <= green.max) return "green";
+  if (overtime >= yellow.min && overtime <= yellow.max) return "yellow";
   return "red";
 }
 

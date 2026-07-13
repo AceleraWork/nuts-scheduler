@@ -1,3 +1,5 @@
+import type { SiteId } from "./site";
+
 export interface TrainingEvent {
   id: string;
   title: string;
@@ -7,4 +9,5 @@ export interface TrainingEvent {
   endMinutes: number;
   attendeeEmployeeIds: string[];
   justifiedAbsenceEmployeeIds: string[];
+  siteId?: SiteId;
 }

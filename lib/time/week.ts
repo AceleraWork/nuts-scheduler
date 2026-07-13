@@ -19,6 +19,13 @@ export function getDayOfWeekInWeek(dateISO: string, weekStartISO: string): DayOf
   return DAYS_OF_WEEK[diffDays];
 }
 
+/** Inverso de getDayOfWeekInWeek: fecha ISO de `day` dentro de la semana que arranca en `weekStartISO`. */
+export function dateForDayInWeek(weekStartISO: string, day: DayOfWeek): string {
+  const date = new Date(`${weekStartISO}T00:00:00`);
+  date.setDate(date.getDate() + DAYS_OF_WEEK.indexOf(day));
+  return date.toISOString().slice(0, 10);
+}
+
 const MONTHS_ES = [
   "enero",
   "febrero",

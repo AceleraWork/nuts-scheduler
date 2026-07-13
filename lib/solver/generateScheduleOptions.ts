@@ -1,4 +1,12 @@
-import type { Employee, HardConstraint, ScheduleOption, Site, SoftConstraint, TrainingEvent } from "@/types";
+import type {
+  Employee,
+  EmployeeLeave,
+  HardConstraint,
+  ScheduleOption,
+  Site,
+  SoftConstraint,
+  TrainingEvent,
+} from "@/types";
 import { buildShifts } from "@/lib/solver/assign";
 import { evaluateAll } from "@/lib/solver/rules/ruleRegistry";
 import { computeScore } from "@/lib/solver/scoring";
@@ -11,7 +19,11 @@ interface GenerateInput {
   hardConstraints: HardConstraint[];
   softConstraints: SoftConstraint[];
   trainings: TrainingEvent[];
+  leaves: EmployeeLeave[];
   weekStartDate: string;
+  /** Semilla aleatoria por click de "Generar horarios" — se suma al variantOffset de cada
+   * estrategia para que A/B/C cambien de forma en cada regeneración, no solo entre sí. */
+  baseVariantOffset?: number;
 }
 
 function summarize(strategyLabel: string, violationCount: number, hardCount: number): string {
@@ -30,7 +42,9 @@ export function generateScheduleOptions({
   hardConstraints,
   softConstraints,
   trainings,
+  leaves,
   weekStartDate,
+  baseVariantOffset = 0,
 }: GenerateInput): ScheduleOption[] {
   const ctx: RuleContext = { employees, sites, trainings, weekStartDate };
   const generatedAt = new Date().toISOString();
@@ -42,8 +56,9 @@ export function generateScheduleOptions({
       sites,
       hardConstraints,
       softConstraints: weightedSoftConstraints,
+      leaves,
       weekStartDate,
-      variantOffset: strategy.variantOffset,
+      variantOffset: strategy.variantOffset + baseVariantOffset,
     });
     const violations = evaluateAll(shifts, ctx, hardConstraints, weightedSoftConstraints);
     const hardCount = violations.filter((v) => v.severity === "hard").length;

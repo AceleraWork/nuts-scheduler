@@ -8,6 +8,7 @@ import { validateSchedule } from "@/lib/solver/validateEdit";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
 import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useTrainingsStore } from "@/stores/useTrainingsStore";
+import { useLeavesStore } from "@/stores/useLeavesStore";
 import { useSitesStore } from "@/stores/useSitesStore";
 import type { ScheduleOption, ScheduleOptionId, Shift } from "@/types";
 
@@ -41,6 +42,7 @@ function swapShiftContent(a: Shift, b: Shift): void {
   a.isTrainingBlock = b.isTrainingBlock;
   a.trainingEventId = b.trainingEventId;
   a.serviceTaskType = b.serviceTaskType;
+  a.leaveId = b.leaveId;
   b.siteId = snapshotA.siteId;
   b.startMinutes = snapshotA.startMinutes;
   b.endMinutes = snapshotA.endMinutes;
@@ -49,6 +51,7 @@ function swapShiftContent(a: Shift, b: Shift): void {
   b.isTrainingBlock = snapshotA.isTrainingBlock;
   b.trainingEventId = snapshotA.trainingEventId;
   b.serviceTaskType = snapshotA.serviceTaskType;
+  b.leaveId = snapshotA.leaveId;
 }
 
 /** Solo persiste el borrador de la semana "por defecto" (la próxima semana desde hoy,
@@ -69,13 +72,16 @@ async function buildFreshOptions(weekStartDate: string): Promise<ScheduleOption[
   const { hardConstraints, softConstraints } = useConstraintsStore.getState();
   const { sites } = useSitesStore.getState();
   const { trainings } = useTrainingsStore.getState();
+  const { leaves } = useLeavesStore.getState();
   return generateScheduleOptions({
     employees,
     sites,
     hardConstraints,
     softConstraints,
     trainings,
+    leaves,
     weekStartDate,
+    baseVariantOffset: Math.floor(Math.random() * 7),
   });
 }
 

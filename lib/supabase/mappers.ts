@@ -4,6 +4,7 @@ import type {
   HardConstraint,
   SoftConstraint,
   TrainingEvent,
+  EmployeeLeave,
   ScheduleOption,
   Shift,
 } from "@/types";
@@ -22,6 +23,7 @@ export function employeeFromRow(row: Record<string, unknown>): Employee {
     canCloseAlone: Boolean(row.can_close_alone),
     earlyLeavePreferences: (row.early_leave_preferences as Employee["earlyLeavePreferences"]) ?? undefined,
     weeklyTargetOverrideHours: (row.weekly_target_override_hours as number | null) ?? undefined,
+    explicitDayPattern: (row.explicit_day_pattern as Employee["explicitDayPattern"]) ?? undefined,
     notes: (row.notes as string[] | null) ?? undefined,
     active: Boolean(row.active),
   };
@@ -41,6 +43,7 @@ export function employeeToRow(employee: Employee): Record<string, unknown> {
     can_close_alone: employee.canCloseAlone,
     early_leave_preferences: employee.earlyLeavePreferences ?? null,
     weekly_target_override_hours: employee.weeklyTargetOverrideHours ?? null,
+    explicit_day_pattern: employee.explicitDayPattern ?? null,
     notes: employee.notes ?? null,
     active: employee.active,
   };
@@ -54,8 +57,25 @@ export function siteFromRow(row: Record<string, unknown>): Site {
     kitchenMinStaffByDay: (row.kitchen_min_staff_by_day as Site["kitchenMinStaffByDay"]) ?? undefined,
     priorityDays: (row.priority_days as Site["priorityDays"]) ?? [],
     stockCoverageBy: (row.stock_coverage_by as string | null) ?? undefined,
+    closingHourByDay: (row.closing_hour_by_day as Site["closingHourByDay"]) ?? undefined,
     homeEmployeeIds: (row.home_employee_ids as string[] | null) ?? undefined,
+    managerId: (row.manager_id as string | null) ?? undefined,
     notes: (row.notes as string[] | null) ?? undefined,
+  };
+}
+
+export function siteToRow(site: Site): Record<string, unknown> {
+  return {
+    id: site.id,
+    name: site.name,
+    volume: site.volume,
+    kitchen_min_staff_by_day: site.kitchenMinStaffByDay ?? null,
+    priority_days: site.priorityDays,
+    stock_coverage_by: site.stockCoverageBy ?? null,
+    closing_hour_by_day: site.closingHourByDay ?? null,
+    home_employee_ids: site.homeEmployeeIds ?? null,
+    manager_id: site.managerId ?? null,
+    notes: site.notes ?? null,
   };
 }
 
@@ -128,6 +148,7 @@ export function trainingFromRow(row: Record<string, unknown>): TrainingEvent {
     endMinutes: Number(row.end_minutes),
     attendeeEmployeeIds: (row.attendee_employee_ids as string[]) ?? [],
     justifiedAbsenceEmployeeIds: (row.justified_absence_employee_ids as string[]) ?? [],
+    siteId: (row.site_id as string | null) ?? undefined,
   };
 }
 
@@ -140,6 +161,31 @@ export function trainingToRow(t: TrainingEvent): Record<string, unknown> {
     end_minutes: t.endMinutes,
     attendee_employee_ids: t.attendeeEmployeeIds,
     justified_absence_employee_ids: t.justifiedAbsenceEmployeeIds,
+    site_id: t.siteId ?? null,
+  };
+}
+
+export function leaveFromRow(row: Record<string, unknown>): EmployeeLeave {
+  return {
+    id: row.id as string,
+    employeeId: row.employee_id as string,
+    label: row.label as string,
+    startDate: row.start_date as string,
+    endDate: row.end_date as string,
+    color: row.color as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+export function leaveToRow(leave: EmployeeLeave): Record<string, unknown> {
+  return {
+    id: leave.id,
+    employee_id: leave.employeeId,
+    label: leave.label,
+    start_date: leave.startDate,
+    end_date: leave.endDate,
+    color: leave.color,
+    created_at: leave.createdAt,
   };
 }
 
@@ -157,6 +203,7 @@ export function shiftFromRow(row: Record<string, unknown>): Shift {
     isTrainingBlock: Boolean(row.is_training_block),
     trainingEventId: (row.training_event_id as string | null) ?? undefined,
     serviceTaskType: (row.service_task_type as Shift["serviceTaskType"]) ?? undefined,
+    leaveId: (row.leave_id as string | null) ?? undefined,
   };
 }
 
@@ -175,6 +222,7 @@ export function shiftToRow(shift: Shift, scheduleOptionId: string): Record<strin
     is_training_block: shift.isTrainingBlock ?? false,
     training_event_id: shift.trainingEventId ?? null,
     service_task_type: shift.serviceTaskType ?? null,
+    leave_id: shift.leaveId ?? null,
   };
 }
 

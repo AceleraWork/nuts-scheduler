@@ -3,6 +3,7 @@ import { getSiteName } from "@/stores/useSitesStore";
 import { parseHour12, shiftDurationHours } from "@/lib/time/formatTime";
 import type { SoftRule } from "@/lib/solver/types";
 import { nextViolationId } from "@/lib/solver/types";
+import { MAX_OVERTIME_HOURS, WEEKLY_TARGET_HOURS } from "@/lib/constants";
 
 const LATE_START_THRESHOLD_MINUTES = 10 * 60; // 10AM
 const WEEKDAYS: DayOfWeek[] = ["lunes", "martes", "miercoles", "jueves", "viernes"];
@@ -123,7 +124,7 @@ export const SOFT_RULES: SoftRule[] = [
     type: "target-weekly-hours",
     evaluate: (shifts, ctx, c) => {
       const area = c.params?.area as string | undefined;
-      const targetHours = (c.params?.targetHours as number) ?? 44;
+      const targetHours = (c.params?.targetHours as number) ?? WEEKLY_TARGET_HOURS;
       const allowOvertime = Boolean(c.params?.allowOvertime);
       if (!area) return [];
       const violations = [];
@@ -133,7 +134,9 @@ export const SOFT_RULES: SoftRule[] = [
           .reduce((total, s) => total + shiftDurationHours(s.startMinutes, s.endMinutes), 0);
         const diff = hours - targetHours;
         const tolerance = 2;
-        if (diff < -tolerance || (!allowOvertime && diff > tolerance)) {
+        // Con "permitir horas extra" el tope sigue siendo MAX_OVERTIME_HOURS, no ilimitado.
+        const maxOver = allowOvertime ? MAX_OVERTIME_HOURS : tolerance;
+        if (diff < -tolerance || diff > maxOver) {
           violations.push({
             id: nextViolationId(),
             ruleId: c.id,

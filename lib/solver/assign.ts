@@ -1,6 +1,7 @@
 import type {
   DayOfWeek,
   Employee,
+  EmployeeLeave,
   HardConstraint,
   Shift,
   Site,
@@ -9,6 +10,7 @@ import type {
 } from "@/types";
 import { DAYS_OF_WEEK } from "@/types";
 import { parseHour12, shiftDurationHours } from "@/lib/time/formatTime";
+import { dateForDayInWeek } from "@/lib/time/week";
 
 const H = (hour: number) => hour * 60;
 const EARLY_LEAVE_MAX_HOURS = 6;
@@ -23,12 +25,28 @@ const DAY_OFF_PREFERENCE_ORDER: DayOfWeek[] = [
   "sabado",
 ];
 
-// Turnos de 8 horas exactas (antes eran de 9h por error — ver bug reportado por la dueña).
+// Turnos de 8 horas exactas. Solo cocina entra a las 7AM — servicio nunca antes de las 8AM.
+// La 3ª plantilla era 1PM-9PM, pero en la práctica casi nadie entra tan tarde — se
+// reemplazó por 10AM-6PM (patrón real observado en horarios pasados de la dueña).
 const SERVICE_TEMPLATES = [
-  { start: H(7), end: H(15) },
+  { start: H(8), end: H(16) },
   { start: H(11), end: H(19) },
-  { start: H(13), end: H(21) },
+  { start: H(10), end: H(18) },
 ];
+
+// Planta (producción) es la única sede con un patrón de turno estructuralmente distinto:
+// entradas variables (5:30/6/7AM) y duración 8-9h, en vez del 7AM-3PM fijo del resto de
+// cocina. Hardcoded a propósito — es una sola sede especial hoy, no una config genérica
+// por sede (ver Site.closingHourByDay para el patrón "config por sede" cuando aplique).
+const PLANTA_SITE_ID: SiteId = "planta";
+const PLANTA_TEMPLATES = [
+  { start: H(5) + 30, end: H(13) + 30 },
+  { start: H(6), end: H(15) },
+  { start: H(7), end: H(15) },
+];
+// Horario administrativo por defecto (Camila/Karen/Kim) — sin datos operativos provistos
+// aún, editable por turno desde el popover de edición.
+const ADMIN_DEFAULT_TEMPLATE = { start: H(8), end: H(16) };
 
 let shiftCounter = 0;
 function nextShiftId(): string {
@@ -47,10 +65,38 @@ function forcedDaysOffFor(employeeId: string, hardConstraints: HardConstraint[])
     .map((c) => c.day!);
 }
 
+/** Días de esta semana cubiertos por una incapacidad/licencia activa del empleado, mapeados
+ * a la incapacidad correspondiente (para poder etiquetar el turno de descanso resultante). */
+function forcedLeaveDaysFor(
+  employeeId: string,
+  leaves: EmployeeLeave[],
+  weekStartDate: string
+): Map<DayOfWeek, string> {
+  const result = new Map<DayOfWeek, string>();
+  for (const day of DAYS_OF_WEEK) {
+    const dateISO = dateForDayInWeek(weekStartDate, day);
+    const leave = leaves.find(
+      (l) => l.employeeId === employeeId && dateISO >= l.startDate && dateISO <= l.endDate
+    );
+    if (leave) result.set(day, leave.id);
+  }
+  return result;
+}
+
 function homeSiteFor(employee: Employee, sites: Site[]): SiteId {
   const home = sites.find((s) => s.homeEmployeeIds?.includes(employee.id));
   if (home && employee.allowedSiteIds.includes(home.id)) return home.id;
   return employee.allowedSiteIds[0];
+}
+
+/** Recorta el fin de un turno si la sede tiene una hora de cierre para ese día (ej. calle-93
+ * cierra a las 5PM los domingos). No aplica a "festivos" — la app no tiene un calendario de
+ * fechas feriadas, solo un patrón recurrente por día de la semana. */
+function applySiteClosingCap(siteId: SiteId, day: DayOfWeek, start: number, end: number, sites: Site[]): number {
+  const closingHour = sites.find((s) => s.id === siteId)?.closingHourByDay?.[day];
+  if (!closingHour) return end;
+  const closingMinutes = parseHour12(closingHour);
+  return closingMinutes > start && closingMinutes < end ? closingMinutes : end;
 }
 
 function excludedSitesFor(employeeId: string, hardConstraints: HardConstraint[]): Set<SiteId> {
@@ -68,6 +114,7 @@ interface AssignInput {
   sites: Site[];
   hardConstraints: HardConstraint[];
   softConstraints: SoftConstraint[];
+  leaves: EmployeeLeave[];
   weekStartDate: string;
   variantOffset?: number;
 }
@@ -77,6 +124,8 @@ export function buildShifts({
   sites,
   hardConstraints,
   softConstraints,
+  leaves,
+  weekStartDate,
   variantOffset = 0,
 }: AssignInput): Shift[] {
   const preferredOffDays = new Set(
@@ -110,12 +159,13 @@ export function buildShifts({
     const excludedSites = excludedSitesFor(employee.id, hardConstraints);
     const allowedSites = employee.allowedSiteIds.filter((id) => !excludedSites.has(id));
     const forced = forcedDaysOffFor(employee.id, hardConstraints);
+    const leaveDays = forcedLeaveDaysFor(employee.id, leaves, weekStartDate);
 
     const preferenceOrder = rotate(DAY_OFF_PREFERENCE_ORDER, (employeeIndex + variantOffset) % 7).filter(
       (d) => preferredOffDays.size === 0 || preferredOffDays.has(d) || DAY_OFF_PREFERENCE_ORDER.indexOf(d) < 4
     );
 
-    const daysOff = new Set<DayOfWeek>(forced);
+    const daysOff = new Set<DayOfWeek>([...forced, ...leaveDays.keys()]);
     for (const day of preferenceOrder) {
       if (daysOff.size >= WORKING_DAYS_OFF_COUNT) break;
       daysOff.add(day);
@@ -138,12 +188,16 @@ export function buildShifts({
           startMinutes: 0,
           endMinutes: 0,
           isDayOff: true,
+          leaveId: leaveDays.get(day),
         });
         return;
       }
 
       let siteId: SiteId;
-      if (employee.rotates && allowedSites.length > 1) {
+      const patternSite = employee.explicitDayPattern?.[day];
+      if (patternSite && allowedSites.includes(patternSite)) {
+        siteId = patternSite;
+      } else if (employee.rotates && allowedSites.length > 1) {
         const isPriorityDay = sites.some(
           (s) => s.priorityDays.includes(day) && allowedSites.includes(s.id)
         );
@@ -151,18 +205,25 @@ export function buildShifts({
         siteId =
           isPriorityDay && prioritySite && allowedSites.includes(prioritySite.id)
             ? prioritySite.id
-            : allowedSites[(dayIndex + employeeIndex) % allowedSites.length];
+            : allowedSites[(dayIndex + employeeIndex + variantOffset) % allowedSites.length];
       } else {
         siteId = home;
       }
 
       let start: number;
       let end: number;
-      if (employee.area === "cocina") {
+      if (siteId === PLANTA_SITE_ID) {
+        const template = PLANTA_TEMPLATES[(dayIndex + employeeIndex + variantOffset) % PLANTA_TEMPLATES.length];
+        start = template.start;
+        end = template.end;
+      } else if (employee.area === "cocina") {
         start = H(7);
         end = H(15);
+      } else if (employee.area === "admin") {
+        start = ADMIN_DEFAULT_TEMPLATE.start;
+        end = ADMIN_DEFAULT_TEMPLATE.end;
       } else {
-        const template = SERVICE_TEMPLATES[(dayIndex + employeeIndex) % SERVICE_TEMPLATES.length];
+        const template = SERVICE_TEMPLATES[(dayIndex + employeeIndex + variantOffset) % SERVICE_TEMPLATES.length];
         start = template.start;
         end = template.end;
       }
@@ -185,6 +246,7 @@ export function buildShifts({
           end = leaveByMinutes;
         }
       }
+      end = applySiteClosingCap(siteId, day, start, end, sites);
       // El aviso de "salida temprana" refleja horas reales trabajadas, no si se aplicó
       // una preferencia de leaveBy: cualquier turno de 6h o menos cuenta como temprano.
       const isEarlyLeave = shiftDurationHours(start, end) <= EARLY_LEAVE_MAX_HOURS;
@@ -265,14 +327,22 @@ function reinforceOnboardingCoverage(shifts: Shift[], employees: Employee[], sit
       const employeeIndex = employees.indexOf(candidateEmployee);
       let start: number;
       let end: number;
-      if (candidateEmployee.area === "cocina") {
+      if (site.id === PLANTA_SITE_ID) {
+        const template = PLANTA_TEMPLATES[(dayIndex + employeeIndex) % PLANTA_TEMPLATES.length];
+        start = template.start;
+        end = template.end;
+      } else if (candidateEmployee.area === "cocina") {
         start = H(7);
         end = H(15);
+      } else if (candidateEmployee.area === "admin") {
+        start = ADMIN_DEFAULT_TEMPLATE.start;
+        end = ADMIN_DEFAULT_TEMPLATE.end;
       } else {
         const template = SERVICE_TEMPLATES[(dayIndex + employeeIndex) % SERVICE_TEMPLATES.length];
         start = template.start;
         end = template.end;
       }
+      end = applySiteClosingCap(site.id, day, start, end, sites);
 
       candidateShift.siteId = site.id;
       candidateShift.area = candidateEmployee.area;

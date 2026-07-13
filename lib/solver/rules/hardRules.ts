@@ -33,9 +33,11 @@ export const HARD_RULES: HardRule[] = [
     evaluate: (shifts, ctx, c) => {
       const violations = [];
       for (const employee of ctx.employees) {
-        const daysOffCount = shifts.filter(
-          (s) => s.employeeId === employee.id && s.isDayOff
-        ).length;
+        const employeeShifts = shifts.filter((s) => s.employeeId === employee.id);
+        // Una incapacidad de varios días fuerza más de 1 día de descanso esa semana — no es
+        // una violación real, así que no aplica esta regla mientras esté de incapacidad.
+        if (employeeShifts.some((s) => s.isDayOff && s.leaveId)) continue;
+        const daysOffCount = employeeShifts.filter((s) => s.isDayOff).length;
         if (daysOffCount === 0) {
           violations.push({
             id: nextViolationId(),
@@ -149,6 +151,7 @@ export const HARD_RULES: HardRule[] = [
       for (const shift of shifts) {
         if (shift.isDayOff) continue;
         const employee = ctx.employees.find((e) => e.id === shift.employeeId);
+        if (employee?.area === "admin") continue;
         if (employee && employee.skills.length === 0) {
           violations.push({
             id: nextViolationId(),

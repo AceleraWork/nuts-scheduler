@@ -1,7 +1,7 @@
 import type { SiteId } from "./site";
 import type { DayOfWeek } from "./index";
 
-export type Area = "cocina" | "servicio";
+export type Area = "cocina" | "servicio" | "admin" | "planta";
 export type EmployeeStatus = "activo" | "onboarding";
 export type Gender = "male" | "female";
 
@@ -37,6 +37,10 @@ export interface Employee {
   canCloseAlone: boolean;
   earlyLeavePreferences?: EarlyLeavePreference[];
   weeklyTargetOverrideHours?: number;
+  /** Sede fija para un día puntual, para quienes rotan pero con un patrón explícito (ej.
+   * "los martes y jueves en un punto") en vez del rotado parejo automático. Los días sin
+   * entrada acá caen de vuelta a la sede home/rotado normal. */
+  explicitDayPattern?: Partial<Record<DayOfWeek, SiteId>>;
   notes?: string[];
   active: boolean;
 }

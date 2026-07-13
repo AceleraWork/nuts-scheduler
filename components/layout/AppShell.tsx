@@ -15,6 +15,7 @@ import { useEmployeesStore } from "@/stores/useEmployeesStore";
 import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useSitesStore } from "@/stores/useSitesStore";
 import { useTrainingsStore } from "@/stores/useTrainingsStore";
+import { useLeavesStore } from "@/stores/useLeavesStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { useUiStore } from "@/stores/useUiStore";
 
@@ -25,6 +26,7 @@ interface AppShellProps {
 const NAV_LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/personal", label: "Personal" },
+  { href: "/sedes", label: "Sedes" },
   { href: "/reglas", label: "Reglas" },
 ];
 
@@ -47,6 +49,7 @@ export function AppShell({ children }: AppShellProps) {
           useConstraintsStore.getState().initialize(),
           useSitesStore.getState().initialize(),
           useTrainingsStore.getState().initialize(),
+          useLeavesStore.getState().initialize(),
         ]);
         await useScheduleStore.getState().initialize();
         if (!cancelled) setLoadState("ready");

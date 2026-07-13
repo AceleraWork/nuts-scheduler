@@ -62,6 +62,10 @@
   --color-gold-soft: var(--gold-soft);
   --color-olive: var(--olive);
   --color-olive-soft: var(--olive-soft);
+  --color-clay: var(--clay);
+  --color-clay-soft: var(--clay-soft);
+  --color-berry: var(--berry);
+  --color-berry-soft: var(--berry-soft);
   --color-amber: var(--amber);
 
   --color-danger: var(--danger);
@@ -128,6 +132,10 @@
   --gold-soft: #f5e7ce;
   --olive: #6c7755;
   --olive-soft: #e7ebdd;
+  --clay: #a06a4f;
+  --clay-soft: #f0ded3;
+  --berry: #a1567e;
+  --berry-soft: #f3e0eb;
   --amber: #ffb000;
 
   --danger: #d22226;
@@ -187,6 +195,10 @@
   --gold-soft: #3a2e1a;
   --olive: #a3b088;
   --olive-soft: #33301f;
+  --clay: #c98a68;
+  --clay-soft: #3a2620;
+  --berry: #cf83ac;
+  --berry-soft: #3a2331;
   --amber: #ffb000;
 
   --danger: #e5534e;

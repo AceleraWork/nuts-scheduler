@@ -77,10 +77,27 @@ Correr en el SQL Editor de Supabase, en este orden:
 3. `supabase/auth-policies.sql` — reemplaza las políticas "allow all" por
    "solo autenticados".
 
-Pendiente de correr en el proyecto real: `supabase/migration-service-task-type.sql`
-(agrega `service_task_type` a `shifts` — instalaciones nuevas ya lo traen en `schema.sql`) y
-`supabase/migration-schedule-options-per-week.sql` (permite guardar horarios de varias
-semanas — antes `schedule_options.id` era solo 'A'/'B'/'C' sin distinguir semana).
+Ya aplicadas al proyecto real (instalaciones nuevas las traen de una vez en `schema.sql`,
+no hace falta correrlas ahí): `supabase/migration-service-task-type.sql` (agrega
+`service_task_type` a `shifts`), `supabase/migration-schedule-options-per-week.sql`
+(permite guardar horarios de varias semanas — antes `schedule_options.id` era solo
+'A'/'B'/'C' sin distinguir semana), `supabase/migration-site-closing-hour.sql` (agrega
+`closing_hour_by_day` a `sites`, ver "Reglas de negocio" abajo), `supabase/migration-employee-area-admin.sql`
+(agrega `'admin'` como área válida — debe correr **antes** de `migration-planta-site-and-team.sql`,
+que ya inserta empleados con esa área), `supabase/migration-planta-site-and-team.sql` (sede
+`planta` + 9 empleados de Planta/admin + 2 soft constraints, agrega `employees.explicit_day_pattern`),
+`supabase/migration-training-site.sql` (agrega `trainings.site_id`) y
+`supabase/migration-employee-leaves.sql` (tabla `employee_leaves` + `shifts.leave_id`). Estas 4
+últimas se aplicaron manualmente vía MCP de Supabase el 2026-07-13 después de que un crash
+dejara el código escrito pero las migraciones sin correr contra el proyecto real — si
+`AppShell` vuelve a mostrar "No se pudo conectar a Supabase", lo primero es comparar
+`supabase/schema.sql` contra el estado real de la tabla antes de asumir un bug de código.
+También aplicadas al proyecto real el mismo día vía MCP: `supabase/migration-site-manager.sql`
+(agrega `sites.manager_id`, sin FK — mismo patrón que `home_employee_ids` — por el orden de
+creación de tablas en `schema.sql`; setea `emp-kim` como encargada de `calle-93`) y
+`supabase/migration-employee-area-planta.sql` (agrega `'planta'` como área válida en los
+checks de `employees`/`shifts` y migra a Aura/Daniel/Deilis/Karo/Gabi/Vane de `area='cocina'`
+a `area='planta'`, ver "Sede Planta" abajo).
 
 Y crear el usuario en Authentication → Users (email `kim@toroteam.com`, password
 `AdminNuts123!`, "Auto Confirm User" activado) — esto no se puede automatizar sin
@@ -104,14 +121,47 @@ acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
 
 - `assign.ts`: construcción greedy (día off, sede, horas por plantilla) + reparación de
   "no abrir/cerrar sola" (intercambia el turno **completo**, no solo el horario de inicio/fin,
-  para no romper la duración — bug real que ya se corrigió una vez).
+  para no romper la duración — bug real que ya se corrigió una vez). Los turnos siempre son
+  de 8h exactas: cocina fija 7AM–3PM, servicio rota entre 3 plantillas que nunca empiezan
+  antes de las 8AM. `applySiteClosingCap()` recorta el fin del turno si `Site.closingHourByDay`
+  tiene una hora para ese día (hoy solo calle-93/domingo → 5PM) — se aplica en los **dos**
+  lugares donde se calculan start/end (el loop principal y `reinforceOnboardingCoverage`).
 - `rules/hardRules.ts` / `rules/softRules.ts` / `rules/ruleRegistry.ts`: reglas
   registradas por `type`, evaluadas contra instancias de `HardConstraint`/`SoftConstraint`
-  (datos editables, no hardcodeadas).
+  (datos editables, no hardcodeadas). `target-weekly-hours` usa `WEEKLY_TARGET_HOURS` (42)
+  como default y, si el constraint tiene `allowOvertime: true`, tolera hasta
+  `MAX_OVERTIME_HOURS` (4) de más — no horas extra ilimitadas.
 - `diversity.ts`: 3 estrategias (balanced/pairing-focus/hours-focus) generan las opciones
   A/B/C variando pesos y el orden de días-off.
 - `validateEdit.ts`: misma evaluación, usada tras cada edición manual (drag&drop, popover)
   para advertencias no bloqueantes.
+
+## Reglas de negocio clave
+
+- **Horarios**: cocina siempre entra a las 7AM; servicio nunca antes de las 8AM (3
+  plantillas rotativas, todas de 8h). Calle 93 cierra a las 5PM los domingos
+  (`Site.closingHourByDay`, `types/site.ts`) — **la app no tiene calendario de festivos**
+  (solo un patrón recurrente por día de semana), así que un feriado puntual entre semana no
+  se detecta solo; hay que ajustarlo a mano ese turno específico (popover o chat con
+  `move_shift`) para esa semana.
+- **Sede Planta**: única sede con plantillas de turno propias y hardcodeadas en
+  `lib/solver/assign.ts` (`PLANTA_SITE_ID`/`PLANTA_TEMPLATES`) — entradas variables
+  (5:30AM/6AM/7AM), duración 8-9h, en vez del 7AM-3PM fijo del resto de cocina. El chequeo
+  de `siteId === PLANTA_SITE_ID` va **antes** que el de `employee.area === "cocina"`, así
+  que aplica por sede sin importar el área del empleado. Equipo actual: Aura, Daniel,
+  Deilis, Karo, Gabi, Vane (área `planta`, categoría propia desde 2026-07-13 — antes eran
+  `cocina`; el cambio de área no afecta el horario porque `assign.ts` decide la plantilla
+  por `siteId` antes de mirar `area`) + Camila/Karen/Kim (área `admin`, rotan entre Planta
+  y los puntos vía `explicitDayPattern`).
+- **Incapacidades/licencias** (`employee_leaves`, `useLeavesStore`): el solver no asigna
+  turnos a un empleado en los días cubiertos por una licencia activa (`forcedLeaveDaysFor`
+  en `assign.ts`) — el turno queda como día libre etiquetado con la licencia
+  (`Shift.leaveId`), no como un simple descanso.
+- **Horas objetivo**: `WEEKLY_TARGET_HOURS = 42`, `MAX_OVERTIME_HOURS = 4`
+  (`lib/constants.ts`). El color del indicador de horas en `HoursBadge`
+  (`components/employees/HoursBadge.tsx`, vía `getHoursIndicator` en `lib/solver/hours.ts`)
+  se calcula sobre **horas extra** (`horas - objetivo`), no sobre horas totales absolutas:
+  0h extra = verde, 1-2h = amarillo, 3h o más = rojo. Ver `OVERTIME_INDICATOR_THRESHOLDS`.
 
 ## Chat IA (`lib/ai/`, `app/api/chat/route.ts`)
 
@@ -144,11 +194,29 @@ acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
   justificación — no reactivarlas sin revisar los falsos positivos primero.
 - **Formato de hora obligatorio**: nunca `":00"` ni ceros a la izquierda (`"7AM"`, no
   `"7:00AM"`) — usar siempre `lib/time/formatTime.ts`, no formatear horas a mano.
+- **Paleta de color por área**: `app/globals.css` solo traía 3 pares (gold=cocina,
+  olive=servicio, clay=admin/otros). Al agregar `planta` como área real se sumó un 4º par
+  (`--berry`/`--berry-soft`, light + dark) — si se agrega otra área/categoría a futuro, hace
+  falta un 5º par, no reusar uno existente.
 
 ## Estado actual
 
 MVP completo (paneles de chat/empleados/horarios, motor de reglas, chat con OpenRouter,
-drag&drop con validación en vivo, exportación PDF/Excel, capacitaciones) + backend real en
-Supabase + login de un solo admin. Pendiente para el usuario: seguir usando/probando la app
-y decidir próximos pasos (roles adicionales, más sedes, ajustes al motor, etc.).
+drag&drop con validación en vivo, exportación PDF/Excel, capacitaciones, apartado de Sedes)
++ backend real en Supabase + login de un solo admin. Pendiente para el usuario: seguir
+usando/probando la app y decidir próximos pasos (roles adicionales, más sedes, ajustes al
+motor, etc.).
+
+## Apartado de Sedes (`app/sedes/page.tsx`, `components/sites/*`)
+
+Separado de Personal, con su propio link en el nav (`components/layout/AppShell.tsx`).
+`SitesPanel.tsx` muestra cada `Site` como una tarjeta tipo perfil (`SiteCard.tsx`): nombre +
+encargado (`Site.managerId`, referencia a un `Employee`, **sin FK** en `sites` — mismo
+patrón que `homeEmployeeIds`, porque en `schema.sql` la tabla `sites` se crea antes que
+`employees`) o "Sin encargado" si no tiene, con un `Select` inline para asignar/quitar
+encargado (`useSitesStore.updateSite`, ya persiste a Supabase). "Crear sede nueva" reusa
+`SitesMenu`/`SiteCreateDialog` (antes vivían dentro de `EmployeesPanel`, ahora solo acá).
+Personal (`EmployeesPanel.tsx`) tiene su propio filtro de categoría (mismo
+`CategoryFilterSelect` que usa el horario, ahora con ítem "Planta") en vez de mostrar
+siempre las 4 secciones completas.
 

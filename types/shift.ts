@@ -20,4 +20,6 @@ export interface Shift {
   trainingEventId?: string;
   /** Etiqueta manual/chat de tarea de servicio (caja, rappi, etc.), solo informativa. */
   serviceTaskType?: ServiceTaskType;
+  /** Presente cuando este día de descanso corresponde a una incapacidad/licencia activa. */
+  leaveId?: string;
 }

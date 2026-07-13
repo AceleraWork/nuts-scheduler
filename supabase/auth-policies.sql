@@ -10,6 +10,7 @@ drop policy if exists "allow all soft_constraints" on soft_constraints;
 drop policy if exists "allow all trainings" on trainings;
 drop policy if exists "allow all schedule_options" on schedule_options;
 drop policy if exists "allow all shifts" on shifts;
+drop policy if exists "allow all employee_leaves" on employee_leaves;
 
 create policy "authenticated only sites" on sites for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
@@ -24,4 +25,6 @@ create policy "authenticated only trainings" on trainings for all
 create policy "authenticated only schedule_options" on schedule_options for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated only shifts" on shifts for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated only employee_leaves" on employee_leaves for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

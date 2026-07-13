@@ -72,12 +72,13 @@ async function createSheetWithRows(
 
 export interface ExportScheduleResult {
   folderUrl: string;
-  sheetUrls: Record<string, string>;
+  sheetUrl: string;
 }
 
 /**
- * Crea (o reutiliza) Mes > Semana en el Drive de Acelera, y dentro un Sheet por sede más
- * uno consolidado con ambas. Idempotente: reexportar la misma semana reutiliza las carpetas.
+ * Crea (o reutiliza) Mes > Semana en el Drive de Acelera, y dentro un único Sheet con una
+ * pestaña por sede más una "Consolidado" con todos los empleados de ambas sedes. Idempotente:
+ * reexportar la misma semana reutiliza las carpetas (el Sheet en sí se vuelve a crear).
  */
 export async function exportScheduleToDrive(
   option: ScheduleOption,
@@ -92,29 +93,14 @@ export async function exportScheduleToDrive(
   const weekFolderName = `Horario Nuts Semana del ${weekRange}`;
   const weekFolderId = await findOrCreateFolder(drive, weekFolderName, monthFolderId);
 
-  const sheetUrls: Record<string, string> = {};
-
-  for (const site of sites) {
-    const title = `${weekFolderName} - ${site.name}`;
-    const rows = buildScheduleRows(option, employees, site.id);
-    const sheet = await createSheetWithRows(drive, sheets, title, weekFolderId, [
-      { tabTitle: site.name, rows },
-    ]);
-    sheetUrls[site.id] = sheet.url;
-  }
-
-  const consolidatedTitle = `${weekFolderName} - Consolidado`;
-  const consolidated = await createSheetWithRows(
-    drive,
-    sheets,
-    consolidatedTitle,
-    weekFolderId,
-    sites.map((site) => ({ tabTitle: site.name, rows: buildScheduleRows(option, employees, site.id) }))
-  );
-  sheetUrls.consolidado = consolidated.url;
+  const tabs = [
+    ...sites.map((site) => ({ tabTitle: site.name, rows: buildScheduleRows(option, employees, site.id) })),
+    { tabTitle: "Consolidado", rows: buildScheduleRows(option, employees) },
+  ];
+  const sheet = await createSheetWithRows(drive, sheets, weekFolderName, weekFolderId, tabs);
 
   return {
     folderUrl: `https://drive.google.com/drive/folders/${weekFolderId}`,
-    sheetUrls,
+    sheetUrl: sheet.url,
   };
 }

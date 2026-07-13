@@ -1,10 +1,10 @@
 -- Nuts About You — Horarios: datos semilla.
 -- Corre esto DESPUÉS de schema.sql, en el mismo SQL Editor.
 
-insert into sites (id, name, volume, kitchen_min_staff_by_day, priority_days, stock_coverage_by, home_employee_ids, notes) values
-('calle-93', 'Calle 93', 'alto', '{"jueves":3,"viernes":3,"sabado":3}'::jsonb, ARRAY['viernes','sabado'], '9AM', null,
-  ARRAY['Días fuertes: jueves, viernes, sábado y domingo.','A las 9AM debe existir cobertura suficiente para recibir stock.','Viernes y sábado son prioritarios para cobertura completa.']),
-('calle-81', 'Calle 81', 'bajo', null, ARRAY[]::text[], null, ARRAY['emp-debora'],
+insert into sites (id, name, volume, kitchen_min_staff_by_day, priority_days, stock_coverage_by, closing_hour_by_day, home_employee_ids, notes) values
+('calle-93', 'Calle 93', 'alto', '{"jueves":3,"viernes":3,"sabado":3}'::jsonb, ARRAY['viernes','sabado'], '9AM', '{"domingo":"5PM"}'::jsonb, null,
+  ARRAY['Días fuertes: jueves, viernes, sábado y domingo.','A las 9AM debe existir cobertura suficiente para recibir stock.','Viernes y sábado son prioritarios para cobertura completa.','Domingos y festivos cierra a las 5PM.']),
+('calle-81', 'Calle 81', 'bajo', null, ARRAY[]::text[], null, null, ARRAY['emp-debora'],
   ARRAY['Débora normalmente trabaja aquí.','Juan David nunca trabaja aquí.','Yeimi rota entre sedes.']);
 
 insert into employees (id, name, area, status, gender, skills, allowed_site_ids, rotates, can_open_alone, can_close_alone, early_leave_preferences, notes, active) values
@@ -58,5 +58,5 @@ insert into soft_constraints (id, type, description, weight, enabled, employee_i
 ('sc-days-off-lun-jue', 'preferred-day-off-range', 'Los descansos idealmente caen entre lunes y jueves.', 3, true, null, null, null, '{"days":["lunes","martes","miercoles","jueves"]}'::jsonb, 'seed', '2026-01-01T00:00:00Z'),
 ('sc-pair-rosa-juan-david', 'pair-together-at-site', 'Rosa y Juan David juntos en Calle 93 de jueves a domingo.', 6, true, ARRAY['emp-rosa','emp-juan-david'], 'calle-93', null, '{"days":["jueves","viernes","sabado","domingo"]}'::jsonb, 'seed', '2026-01-01T00:00:00Z'),
 ('sc-pair-moni-rosa-miercoles', 'pair-together-at-site', 'Moni y Rosa juntas en Calle 93 los miércoles.', 4, true, ARRAY['emp-moni','emp-rosa'], 'calle-93', 'miercoles', null, 'seed', '2026-01-01T00:00:00Z'),
-('sc-target-hours-servicio', 'target-weekly-hours', 'Servicio debe acercarse a 44 horas semanales.', 7, true, null, null, null, '{"area":"servicio","targetHours":44,"allowOvertime":false}'::jsonb, 'seed', '2026-01-01T00:00:00Z'),
-('sc-target-hours-cocina', 'target-weekly-hours', 'Cocina debe acercarse a 44 horas semanales, aunque se permiten horas extra.', 7, true, null, null, null, '{"area":"cocina","targetHours":44,"allowOvertime":true}'::jsonb, 'seed', '2026-01-01T00:00:00Z');
+('sc-target-hours-servicio', 'target-weekly-hours', 'Servicio debe acercarse a 42 horas semanales.', 7, true, null, null, null, '{"area":"servicio","targetHours":42,"allowOvertime":false}'::jsonb, 'seed', '2026-01-01T00:00:00Z'),
+('sc-target-hours-cocina', 'target-weekly-hours', 'Cocina debe acercarse a 42 horas semanales, hasta 4h extra permitidas.', 7, true, null, null, null, '{"area":"cocina","targetHours":42,"allowOvertime":true}'::jsonb, 'seed', '2026-01-01T00:00:00Z');

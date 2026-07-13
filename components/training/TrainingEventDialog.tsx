@@ -15,14 +15,20 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTrainingsStore } from "@/stores/useTrainingsStore";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
+import { useSitesStore } from "@/stores/useSitesStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { hhmmToMinutes } from "@/lib/time/formatTime";
+import type { SiteId } from "@/types";
+
+const NONE = "__none__";
 
 export function TrainingEventDialog() {
   const [open, setOpen] = useState(false);
   const employees = useEmployeesStore((s) => s.employees);
+  const sites = useSitesStore((s) => s.sites);
   const addTrainingEvent = useTrainingsStore((s) => s.addTrainingEvent);
   const options = useScheduleStore((s) => s.options);
   const revalidate = useScheduleStore((s) => s.revalidate);
@@ -31,6 +37,7 @@ export function TrainingEventDialog() {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("11:00");
+  const [siteId, setSiteId] = useState<SiteId | typeof NONE>(NONE);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [justifiedAbsences, setJustifiedAbsences] = useState<string[]>([]);
 
@@ -38,11 +45,16 @@ export function TrainingEventDialog() {
     setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
 
+  function toggleAll(list: string[], setList: (v: string[]) => void) {
+    setList(list.length === employees.length ? [] : employees.map((e) => e.id));
+  }
+
   function resetForm() {
     setTitle("");
     setDate("");
     setStart("09:00");
     setEnd("11:00");
+    setSiteId(NONE);
     setAttendees([]);
     setJustifiedAbsences([]);
   }
@@ -57,6 +69,7 @@ export function TrainingEventDialog() {
       endMinutes: hhmmToMinutes(end),
       attendeeEmployeeIds: attendees,
       justifiedAbsenceEmployeeIds: justifiedAbsences,
+      siteId: siteId === NONE ? undefined : siteId,
     });
     await Promise.all(options.map((option) => revalidate(option.id)));
     resetForm();
@@ -78,6 +91,27 @@ export function TrainingEventDialog() {
           <div className="space-y-1.5">
             <Label>Título</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Manejo de caja" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Sede</Label>
+            <Select value={siteId} onValueChange={(v) => setSiteId(v as SiteId | typeof NONE)}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  {(v: SiteId | typeof NONE) =>
+                    v === NONE ? "Sin sede" : (sites.find((s) => s.id === v)?.name ?? v)
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>Sin sede</SelectItem>
+                {sites.map((site) => (
+                  <SelectItem key={site.id} value={site.id}>
+                    {site.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex gap-2">
@@ -111,7 +145,16 @@ export function TrainingEventDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Asistentes</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Asistentes</Label>
+              <label className="flex items-center gap-1.5 text-xs text-ink-mute">
+                <span>Seleccionar todos</span>
+                <Switch
+                  checked={employees.length > 0 && attendees.length === employees.length}
+                  onCheckedChange={() => toggleAll(attendees, setAttendees)}
+                />
+              </label>
+            </div>
             <ScrollArea className="h-32 rounded-lg border border-border">
               <div className="flex flex-col gap-1.5 p-2">
                 {employees.map((employee) => (
@@ -128,7 +171,16 @@ export function TrainingEventDialog() {
           </div>
 
           <div className="space-y-1.5">
-            <Label>Ausentes justificados</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Ausentes justificados</Label>
+              <label className="flex items-center gap-1.5 text-xs text-ink-mute">
+                <span>Seleccionar todos</span>
+                <Switch
+                  checked={employees.length > 0 && justifiedAbsences.length === employees.length}
+                  onCheckedChange={() => toggleAll(justifiedAbsences, setJustifiedAbsences)}
+                />
+              </label>
+            </div>
             <ScrollArea className="h-32 rounded-lg border border-border">
               <div className="flex flex-col gap-1.5 p-2">
                 {employees.map((employee) => (

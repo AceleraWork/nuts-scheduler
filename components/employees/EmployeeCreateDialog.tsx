@@ -29,6 +29,7 @@ import type { Area, Employee, EmployeeStatus, Gender, SiteId, SkillName } from "
 
 const KITCHEN_SKILLS: SkillName[] = ["salado", "dulce"];
 const SERVICE_SKILLS: SkillName[] = ["apertura", "cafe", "rappi", "cierre"];
+const ADMIN_SKILLS: SkillName[] = [];
 
 function slugify(name: string): string {
   return name
@@ -56,7 +57,12 @@ export function EmployeeCreateDialog() {
   const [canOpenAlone, setCanOpenAlone] = useState(true);
   const [canCloseAlone, setCanCloseAlone] = useState(true);
 
-  const availableSkills = area === "cocina" ? KITCHEN_SKILLS : SERVICE_SKILLS;
+  const availableSkills =
+    area === "cocina" || area === "planta"
+      ? KITCHEN_SKILLS
+      : area === "servicio"
+        ? SERVICE_SKILLS
+        : ADMIN_SKILLS;
 
   function toggleSite(siteId: SiteId) {
     setAllowedSiteIds((prev) =>
@@ -86,7 +92,7 @@ export function EmployeeCreateDialog() {
   }
 
   async function handleSave() {
-    if (!name.trim() || allowedSiteIds.length === 0 || skills.length === 0) return;
+    if (!name.trim() || allowedSiteIds.length === 0 || (area !== "admin" && skills.length === 0)) return;
     const employee: Employee = {
       id: `emp-${slugify(name)}-${Date.now().toString(36)}`,
       name: name.trim(),
@@ -139,6 +145,8 @@ export function EmployeeCreateDialog() {
                 <SelectContent>
                   <SelectItem value="cocina">Cocina</SelectItem>
                   <SelectItem value="servicio">Servicio</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="planta">Planta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -169,17 +177,19 @@ export function EmployeeCreateDialog() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Habilidades</Label>
-            <div className="flex flex-col gap-2">
-              {availableSkills.map((skill) => (
-                <label key={skill} className="flex items-center justify-between gap-2 text-sm">
-                  <span>{SKILL_LABELS[skill]}</span>
-                  <Switch checked={skills.includes(skill)} onCheckedChange={() => toggleSkill(skill)} />
-                </label>
-              ))}
+          {area !== "admin" && (
+            <div className="space-y-1.5">
+              <Label>Habilidades</Label>
+              <div className="flex flex-col gap-2">
+                {availableSkills.map((skill) => (
+                  <label key={skill} className="flex items-center justify-between gap-2 text-sm">
+                    <span>{SKILL_LABELS[skill]}</span>
+                    <Switch checked={skills.includes(skill)} onCheckedChange={() => toggleSkill(skill)} />
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Sedes permitidas</Label>
@@ -216,7 +226,7 @@ export function EmployeeCreateDialog() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!name.trim() || allowedSiteIds.length === 0 || skills.length === 0}
+            disabled={!name.trim() || allowedSiteIds.length === 0 || (area !== "admin" && skills.length === 0)}
           >
             Crear empleado
           </Button>

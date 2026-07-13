@@ -25,6 +25,7 @@ import { useSitesStore } from "@/stores/useSitesStore";
 import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { formatHour12, hhmmToMinutes, minutesToHHMM, parseHour12 } from "@/lib/time/formatTime";
+import { WEEKLY_TARGET_HOURS } from "@/lib/constants";
 import {
   HARD_CONSTRAINT_TYPES,
   HARD_CONSTRAINT_LABELS,
@@ -83,7 +84,7 @@ export function ConstraintFormDialog({
   const [days, setDays] = useState<DayOfWeek[]>([]);
   const [minHeadcount, setMinHeadcount] = useState(2);
   const [area, setArea] = useState<"cocina" | "servicio">("servicio");
-  const [targetHours, setTargetHours] = useState(44);
+  const [targetHours, setTargetHours] = useState(WEEKLY_TARGET_HOURS);
   const [allowOvertime, setAllowOvertime] = useState(false);
   const [leaveByHHMM, setLeaveByHHMM] = useState(minutesToHHMM(parseHour12(DEFAULT_LEAVE_BY)));
   const [customLabel, setCustomLabel] = useState("");
@@ -101,7 +102,7 @@ export function ConstraintFormDialog({
       setDays(editing.day ? [editing.day] : ((editing.params?.days as DayOfWeek[]) ?? []));
       setMinHeadcount((editing.params?.minHeadcount as number) ?? 2);
       setArea((editing.params?.area as "cocina" | "servicio") ?? "servicio");
-      setTargetHours((editing.params?.targetHours as number) ?? 44);
+      setTargetHours((editing.params?.targetHours as number) ?? WEEKLY_TARGET_HOURS);
       setAllowOvertime(Boolean(editing.params?.allowOvertime));
       setLeaveByHHMM(minutesToHHMM(parseHour12((editing.params?.leaveBy as string) ?? DEFAULT_LEAVE_BY)));
       setCustomLabel((editing.params?.customLabel as string) ?? "");
@@ -117,7 +118,7 @@ export function ConstraintFormDialog({
       setDays([]);
       setMinHeadcount(2);
       setArea("servicio");
-      setTargetHours(44);
+      setTargetHours(WEEKLY_TARGET_HOURS);
       setAllowOvertime(false);
       setLeaveByHHMM(minutesToHHMM(parseHour12(DEFAULT_LEAVE_BY)));
       setCustomLabel("");

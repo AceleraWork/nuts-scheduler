@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, CalendarOff } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,10 @@ import type { Employee } from "@/types";
 interface EmployeeCardProps {
   employee: Employee;
   onEdit: (employee: Employee) => void;
+  onNewLeave: (employee: Employee) => void;
 }
 
-export function EmployeeCard({ employee, onEdit }: EmployeeCardProps) {
+export function EmployeeCard({ employee, onEdit, onNewLeave }: EmployeeCardProps) {
   const { hours, indicator } = useEmployeeHours(employee.id);
   const activeOption = useScheduleStore(selectActiveOption);
   const regenerate = useScheduleStore((s) => s.regenerate);
@@ -78,6 +79,14 @@ export function EmployeeCard({ employee, onEdit }: EmployeeCardProps) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Nueva incapacidad para ${employee.name}`}
+            onClick={() => onNewLeave(employee)}
+          >
+            <CalendarOff className="size-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"

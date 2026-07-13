@@ -6,6 +6,8 @@ import type { Employee, ScheduleOption } from "@/types";
 import { ScheduleCell } from "@/components/schedule/ScheduleCell";
 import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 import { useScheduleStore } from "@/stores/useScheduleStore";
+import { useTrainingsStore } from "@/stores/useTrainingsStore";
+import { getDayOfWeekInWeek } from "@/lib/time/week";
 import type { SiteFilter } from "@/components/schedule/SiteFilterTabs";
 
 interface ScheduleGridProps {
@@ -16,6 +18,7 @@ interface ScheduleGridProps {
 
 export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProps) {
   const swapShifts = useScheduleStore((s) => s.swapShifts);
+  const trainings = useTrainingsStore((s) => s.trainings);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const draggable = siteFilter === "todas";
 
@@ -54,6 +57,11 @@ export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProp
                   const shift = option.shifts.find(
                     (s) => s.employeeId === employee.id && s.day === day
                   );
+                  const training = trainings.find(
+                    (t) =>
+                      t.attendeeEmployeeIds.includes(employee.id) &&
+                      getDayOfWeekInWeek(t.date, option.weekStartDate) === day
+                  );
                   return (
                     <td key={day} className="align-top">
                       <ScheduleCell
@@ -61,6 +69,7 @@ export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProp
                         siteFilter={siteFilter}
                         optionId={option.id}
                         draggable={draggable}
+                        training={training}
                       />
                     </td>
                   );

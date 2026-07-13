@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ScheduleOptionTabs } from "@/components/schedule/ScheduleOptionTabs";
 import { SiteFilterTabs, type SiteFilter } from "@/components/schedule/SiteFilterTabs";
+import { CategoryFilterSelect, type CategoryFilter } from "@/components/schedule/CategoryFilterSelect";
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { ScheduleSummaryFooter } from "@/components/schedule/ScheduleSummaryFooter";
 import { WeekNavHeader } from "@/components/schedule/WeekNavHeader";
@@ -23,10 +24,14 @@ export function SchedulePanel() {
   const regenerate = useScheduleStore((s) => s.regenerate);
   const employees = useEmployeesStore((s) => s.employees);
   const [siteFilter, setSiteFilter] = useState<SiteFilter>("todas");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("todas");
 
   const sortedEmployees = useMemo(
-    () => [...employees].sort((a, b) => a.area.localeCompare(b.area) || a.name.localeCompare(b.name)),
-    [employees]
+    () =>
+      employees
+        .filter((e) => categoryFilter === "todas" || e.area === categoryFilter)
+        .sort((a, b) => a.area.localeCompare(b.area) || a.name.localeCompare(b.name)),
+    [employees, categoryFilter]
   );
 
   return (
@@ -38,7 +43,10 @@ export function SchedulePanel() {
         action={<ScheduleOptionTabs />}
       />
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-        <SiteFilterTabs value={siteFilter} onChange={setSiteFilter} />
+        <div className="flex items-center gap-2">
+          <span className="label-caps text-ink-mute">Sede:</span>
+          <SiteFilterTabs value={siteFilter} onChange={setSiteFilter} />
+        </div>
         <div className="flex items-center gap-2">
           {activeOption && (
             <>
@@ -55,7 +63,9 @@ export function SchedulePanel() {
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 p-4">
           {activeOption && <ScheduleSummaryFooter option={activeOption} />}
-          <WeekNavHeader />
+          <WeekNavHeader
+            leftSlot={<CategoryFilterSelect value={categoryFilter} onChange={setCategoryFilter} />}
+          />
           {activeOption ? (
             <ScheduleGrid employees={sortedEmployees} option={activeOption} siteFilter={siteFilter} />
           ) : (
