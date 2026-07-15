@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { ShiftBlock } from "@/components/schedule/ShiftBlock";
 import { ShiftEditPopover } from "@/components/schedule/ShiftEditPopover";
 import { TrainingIndicator } from "@/components/schedule/TrainingIndicator";
-import type { Shift, ScheduleOptionId, TrainingEvent } from "@/types";
+import { HolidayIndicator } from "@/components/schedule/HolidayIndicator";
+import type { Shift, ScheduleOptionId, TrainingEvent, PublicHoliday } from "@/types";
 import type { SiteFilter } from "@/components/schedule/SiteFilterTabs";
 
 interface ScheduleCellProps {
@@ -14,9 +15,10 @@ interface ScheduleCellProps {
   optionId: ScheduleOptionId;
   draggable: boolean;
   training?: TrainingEvent;
+  holiday?: PublicHoliday;
 }
 
-export function ScheduleCell({ shift, siteFilter, optionId, draggable, training }: ScheduleCellProps) {
+export function ScheduleCell({ shift, siteFilter, optionId, draggable, training, holiday }: ScheduleCellProps) {
   const droppable = useDroppable({ id: shift?.id ?? "empty", disabled: !draggable || !shift });
   const draggableState = useDraggable({ id: shift?.id ?? "empty", disabled: !draggable || !shift });
 
@@ -55,7 +57,12 @@ export function ScheduleCell({ shift, siteFilter, optionId, draggable, training 
           </ShiftEditPopover>
         </div>
       </div>
-      {training && <TrainingIndicator training={training} />}
+      {(holiday || training) && (
+        <div className="absolute inset-x-1 top-0.5 flex flex-col gap-0.5">
+          {holiday && <HolidayIndicator holiday={holiday} />}
+          {training && <TrainingIndicator training={training} />}
+        </div>
+      )}
     </div>
   );
 }

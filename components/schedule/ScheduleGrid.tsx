@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { DAYS_OF_WEEK, DAY_LABELS } from "@/types";
 import type { Employee, ScheduleOption } from "@/types";
@@ -7,7 +8,8 @@ import { ScheduleCell } from "@/components/schedule/ScheduleCell";
 import { EmployeeAvatar } from "@/components/employees/EmployeeAvatar";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { useTrainingsStore } from "@/stores/useTrainingsStore";
-import { getDayOfWeekInWeek } from "@/lib/time/week";
+import { useHolidaysStore } from "@/stores/useHolidaysStore";
+import { getDayOfWeekInWeek, dateForDayInWeek } from "@/lib/time/week";
 import type { SiteFilter } from "@/components/schedule/SiteFilterTabs";
 
 interface ScheduleGridProps {
@@ -19,8 +21,18 @@ interface ScheduleGridProps {
 export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProps) {
   const swapShifts = useScheduleStore((s) => s.swapShifts);
   const trainings = useTrainingsStore((s) => s.trainings);
+  const holidays = useHolidaysStore((s) => s.holidays);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const draggable = siteFilter === "todas";
+
+  useEffect(() => {
+    const years = new Set(
+      DAYS_OF_WEEK.map((day) => Number(dateForDayInWeek(option.weekStartDate, day).slice(0, 4)))
+    );
+    for (const year of years) {
+      useHolidaysStore.getState().ensureYearLoaded(year);
+    }
+  }, [option.weekStartDate]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -62,6 +74,8 @@ export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProp
                       t.attendeeEmployeeIds.includes(employee.id) &&
                       getDayOfWeekInWeek(t.date, option.weekStartDate) === day
                   );
+                  const dayDate = dateForDayInWeek(option.weekStartDate, day);
+                  const holiday = holidays.find((h) => h.date === dayDate);
                   return (
                     <td key={day} className="align-top">
                       <ScheduleCell
@@ -70,6 +84,7 @@ export function ScheduleGrid({ employees, option, siteFilter }: ScheduleGridProp
                         optionId={option.id}
                         draggable={draggable}
                         training={training}
+                        holiday={holiday}
                       />
                     </td>
                   );

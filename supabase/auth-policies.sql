@@ -11,6 +11,7 @@ drop policy if exists "allow all trainings" on trainings;
 drop policy if exists "allow all schedule_options" on schedule_options;
 drop policy if exists "allow all shifts" on shifts;
 drop policy if exists "allow all employee_leaves" on employee_leaves;
+drop policy if exists "allow all public_holidays" on public_holidays;
 
 create policy "authenticated only sites" on sites for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
@@ -27,4 +28,6 @@ create policy "authenticated only schedule_options" on schedule_options for all
 create policy "authenticated only shifts" on shifts for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated only employee_leaves" on employee_leaves for all
+  using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+create policy "authenticated only public_holidays" on public_holidays for all
   using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');

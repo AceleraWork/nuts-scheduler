@@ -7,6 +7,7 @@ import type {
   EmployeeLeave,
   ScheduleOption,
   Shift,
+  PublicHoliday,
 } from "@/types";
 
 export function employeeFromRow(row: Record<string, unknown>): Employee {
@@ -162,6 +163,20 @@ export function trainingToRow(t: TrainingEvent): Record<string, unknown> {
     attendee_employee_ids: t.attendeeEmployeeIds,
     justified_absence_employee_ids: t.justifiedAbsenceEmployeeIds,
     site_id: t.siteId ?? null,
+  };
+}
+
+export function publicHolidayFromRow(row: Record<string, unknown>): PublicHoliday {
+  return {
+    date: row.date as string,
+    name: row.name as string,
+  };
+}
+
+export function publicHolidayToRow(h: PublicHoliday): Record<string, unknown> {
+  return {
+    date: h.date,
+    name: h.name,
   };
 }
 

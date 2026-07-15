@@ -29,6 +29,7 @@ export function SchedulePanel() {
   const sortedEmployees = useMemo(
     () =>
       employees
+        .filter((e) => e.active)
         .filter((e) => categoryFilter === "todas" || e.area === categoryFilter)
         .sort((a, b) => a.area.localeCompare(b.area) || a.name.localeCompare(b.name)),
     [employees, categoryFilter]

@@ -16,6 +16,7 @@ import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useSitesStore } from "@/stores/useSitesStore";
 import { useTrainingsStore } from "@/stores/useTrainingsStore";
 import { useLeavesStore } from "@/stores/useLeavesStore";
+import { useHolidaysStore } from "@/stores/useHolidaysStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { useUiStore } from "@/stores/useUiStore";
 
@@ -50,6 +51,7 @@ export function AppShell({ children }: AppShellProps) {
           useSitesStore.getState().initialize(),
           useTrainingsStore.getState().initialize(),
           useLeavesStore.getState().initialize(),
+          useHolidaysStore.getState().initialize(),
         ]);
         await useScheduleStore.getState().initialize();
         if (!cancelled) setLoadState("ready");

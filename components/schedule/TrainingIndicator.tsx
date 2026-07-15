@@ -20,7 +20,7 @@ export function TrainingIndicator({ training }: TrainingIndicatorProps) {
           <button
             type="button"
             aria-label={`Capacitación: ${training.title}`}
-            className="absolute inset-x-1 top-0.5 h-1.5 rounded-full bg-danger"
+            className="h-1.5 w-full rounded-full bg-danger"
           />
         }
       />

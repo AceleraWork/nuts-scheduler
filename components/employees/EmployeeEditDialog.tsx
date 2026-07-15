@@ -35,6 +35,7 @@ export function EmployeeEditDialog({ employee, onOpenChange }: EmployeeEditDialo
   const [rotates, setRotates] = useState(false);
   const [canOpenAlone, setCanOpenAlone] = useState(false);
   const [canCloseAlone, setCanCloseAlone] = useState(false);
+  const [active, setActive] = useState(true);
 
   useEffect(() => {
     if (employee) {
@@ -43,6 +44,7 @@ export function EmployeeEditDialog({ employee, onOpenChange }: EmployeeEditDialo
       setRotates(employee.rotates);
       setCanOpenAlone(employee.canOpenAlone);
       setCanCloseAlone(employee.canCloseAlone);
+      setActive(employee.active);
     }
   }, [employee]);
 
@@ -54,7 +56,7 @@ export function EmployeeEditDialog({ employee, onOpenChange }: EmployeeEditDialo
 
   async function handleSave() {
     if (!employee) return;
-    await updateEmployee(employee.id, { status, allowedSiteIds, rotates, canOpenAlone, canCloseAlone });
+    await updateEmployee(employee.id, { status, allowedSiteIds, rotates, canOpenAlone, canCloseAlone, active });
     onOpenChange(false);
   }
 
@@ -105,6 +107,10 @@ export function EmployeeEditDialog({ employee, onOpenChange }: EmployeeEditDialo
           <div className="flex items-center justify-between gap-2">
             <Label>Puede cerrar sola</Label>
             <Switch checked={canCloseAlone} onCheckedChange={setCanCloseAlone} />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <Label>Aparece en el horario</Label>
+            <Switch checked={active} onCheckedChange={setActive} />
           </div>
         </div>
 

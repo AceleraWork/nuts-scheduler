@@ -97,7 +97,8 @@ También aplicadas al proyecto real el mismo día vía MCP: `supabase/migration-
 creación de tablas en `schema.sql`; setea `emp-kim` como encargada de `calle-93`) y
 `supabase/migration-employee-area-planta.sql` (agrega `'planta'` como área válida en los
 checks de `employees`/`shifts` y migra a Aura/Daniel/Deilis/Karo/Gabi/Vane de `area='cocina'`
-a `area='planta'`, ver "Sede Planta" abajo).
+a `area='planta'`, ver "Sede Planta" abajo). También aplicada vía MCP el 2026-07-15:
+`supabase/migration-public-holidays.sql` (tabla `public_holidays`, ver "Festivos" abajo).
 
 Y crear el usuario en Authentication → Users (email `kim@toroteam.com`, password
 `AdminNuts123!`, "Auto Confirm User" activado) — esto no se puede automatizar sin
@@ -151,8 +152,19 @@ acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
   que aplica por sede sin importar el área del empleado. Equipo actual: Aura, Daniel,
   Deilis, Karo, Gabi, Vane (área `planta`, categoría propia desde 2026-07-13 — antes eran
   `cocina`; el cambio de área no afecta el horario porque `assign.ts` decide la plantilla
-  por `siteId` antes de mirar `area`) + Camila/Karen/Kim (área `admin`, rotan entre Planta
-  y los puntos vía `explicitDayPattern`).
+  por `siteId` antes de mirar `area`) + Camila/Karen (área `admin`, rotan entre Planta
+  y los puntos vía `explicitDayPattern`). Kim (`emp-kim`, también área `admin`) tiene
+  `active: false` desde 2026-07-15 — sigue existiendo como `Employee` (encargada de
+  `calle-93` vía `sites.manager_id`, seleccionable en Sedes) pero el solver y la grilla
+  la excluyen (ver bullet de "Empleados inactivos" abajo).
+- **Empleados inactivos** (`Employee.active`): un empleado con `active: false` sigue
+  existiendo en `useEmployeesStore` (Personal, encargada de sede en Sedes, etc.) pero
+  queda excluido tanto de la grilla del horario (filtro en `SchedulePanel.tsx`) como de la
+  generación/revalidación de turnos (`buildFreshOptions`/`revalidate` en
+  `useScheduleStore.ts` filtran `employees` por `active` antes de llamar al solver). Se
+  edita con el switch "Aparece en el horario" en `EmployeeEditDialog.tsx`. Antes de este
+  cambio el campo `active` solo se usaba dentro de `reinforceOnboardingCoverage` en
+  `assign.ts` (para no ofrecer a alguien inactivo como reemplazo de un onboarding solo).
 - **Incapacidades/licencias** (`employee_leaves`, `useLeavesStore`): el solver no asigna
   turnos a un empleado en los días cubiertos por una licencia activa (`forcedLeaveDaysFor`
   en `assign.ts`) — el turno queda como día libre etiquetado con la licencia
@@ -162,6 +174,17 @@ acceso admin/API key de servicio, lo hace el usuario a mano desde el dashboard.
   (`components/employees/HoursBadge.tsx`, vía `getHoursIndicator` en `lib/solver/hours.ts`)
   se calcula sobre **horas extra** (`horas - objetivo`), no sobre horas totales absolutas:
   0h extra = verde, 1-2h = amarillo, 3h o más = rojo. Ver `OVERTIME_INDICATOR_THRESHOLDS`.
+- **Festivos** (`public_holidays`, `useHolidaysStore`): puramente informativo, no cambia
+  la asignación de turnos — es una barra ámbar (`HolidayIndicator.tsx`) que aparece en el
+  horario para **todos** los empleados el día que sea festivo en Colombia (a diferencia de
+  la barra de capacitación, que solo aplica a los asistentes). Los festivos se traen de la
+  API gratuita Nager.Date (`https://date.nager.at/api/v3/PublicHolidays/{año}/CO`, sin API
+  key) la primera vez que se necesita un año y quedan cacheados en la tabla
+  `public_holidays`; si esa API externa falla, `ensureYearLoaded` falla en silencio (no
+  bloquea el resto de la app, ver `stores/useHolidaysStore.ts`) y se reintenta la próxima
+  vez. No implica que nadie trabaje ese día — solo es una señal para quien arma el horario.
+  No hay calendario de festivos por fuera de Colombia ni festivos manuales/editables desde
+  la UI.
 
 ## Chat IA (`lib/ai/`, `app/api/chat/route.ts`)
 

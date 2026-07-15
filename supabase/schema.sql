@@ -113,6 +113,11 @@ create table if not exists employee_leaves (
 
 alter table shifts add column if not exists leave_id text references employee_leaves(id);
 
+create table if not exists public_holidays (
+  date date primary key,
+  name text not null
+);
+
 -- RLS: la app todavía no tiene login, así que se habilita acceso abierto de lectura/escritura
 -- para la key pública (anon/publishable). Cuando agregues autenticación, reemplaza estas
 -- políticas "allow all" por reglas basadas en el usuario autenticado.
@@ -124,6 +129,7 @@ alter table trainings enable row level security;
 alter table schedule_options enable row level security;
 alter table shifts enable row level security;
 alter table employee_leaves enable row level security;
+alter table public_holidays enable row level security;
 
 create policy "allow all sites" on sites for all using (true) with check (true);
 create policy "allow all employees" on employees for all using (true) with check (true);
@@ -133,3 +139,4 @@ create policy "allow all trainings" on trainings for all using (true) with check
 create policy "allow all schedule_options" on schedule_options for all using (true) with check (true);
 create policy "allow all shifts" on shifts for all using (true) with check (true);
 create policy "allow all employee_leaves" on employee_leaves for all using (true) with check (true);
+create policy "allow all public_holidays" on public_holidays for all using (true) with check (true);

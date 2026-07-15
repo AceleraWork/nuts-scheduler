@@ -68,7 +68,7 @@ function persistDraftIfDefaultWeek(state: Pick<ScheduleState, "weekStartDate" | 
 }
 
 async function buildFreshOptions(weekStartDate: string): Promise<ScheduleOption[]> {
-  const { employees } = useEmployeesStore.getState();
+  const employees = useEmployeesStore.getState().employees.filter((e) => e.active);
   const { hardConstraints, softConstraints } = useConstraintsStore.getState();
   const { sites } = useSitesStore.getState();
   const { trainings } = useTrainingsStore.getState();
@@ -171,7 +171,7 @@ export const useScheduleStore = create<ScheduleState>()(
       await get().revalidate(optionId);
     },
     revalidate: async (optionId) => {
-      const { employees } = useEmployeesStore.getState();
+      const employees = useEmployeesStore.getState().employees.filter((e) => e.active);
       const { hardConstraints, softConstraints } = useConstraintsStore.getState();
       const { sites } = useSitesStore.getState();
       const { trainings } = useTrainingsStore.getState();
