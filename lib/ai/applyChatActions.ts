@@ -80,7 +80,15 @@ export async function applyChatActions(actions: ChatAction[]): Promise<AppliedAc
           break;
         }
         const patch: Partial<Shift> = {};
-        if (isDayOff !== undefined) patch.isDayOff = isDayOff;
+        if (isDayOff !== undefined) {
+          patch.isDayOff = isDayOff;
+        } else if (startTime || endTime || siteId || serviceTaskType) {
+          // Si la IA pide un horario/sede/tarea concretos sin decir isDayOff, es porque
+          // ese turno debe quedar trabajado — si el turno origen estaba en descanso, hay
+          // que sacarlo de descanso explícitamente o Object.assign en updateShift deja el
+          // horario nuevo pero isDayOff:true, y la grilla lo sigue mostrando como "Descanso".
+          patch.isDayOff = false;
+        }
         if (siteId) patch.siteId = siteId;
         if (startTime) patch.startMinutes = parseHour12(startTime);
         if (endTime) patch.endMinutes = parseHour12(endTime);

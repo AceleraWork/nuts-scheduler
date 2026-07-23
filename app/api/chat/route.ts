@@ -13,14 +13,21 @@ const FALLBACK_RESPONSE: ChatResponse = {
   actions: [],
 };
 
-function tryParse(raw: string): ChatResponse | null {
+function tryParse(raw: string): { data: ChatResponse; error?: undefined } | { data?: undefined; error: string } {
+  let json: unknown;
   try {
-    const json = JSON.parse(raw);
-    const result = chatResponseSchema.safeParse(json);
-    return result.success ? result.data : null;
+    json = JSON.parse(raw);
   } catch {
-    return null;
+    return { error: "La respuesta no era JSON válido (posiblemente incompleta o cortada)." };
   }
+  const result = chatResponseSchema.safeParse(json);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `- en "${issue.path.join(".") || "(raíz)"}": ${issue.message}`)
+      .join("\n");
+    return { error: `El JSON no tiene la forma esperada { reply, actions }:\n${issues}` };
+  }
+  return { data: result.data };
 }
 
 export async function POST(request: Request) {
@@ -39,19 +46,19 @@ export async function POST(request: Request) {
 
   try {
     const firstRaw = await callOpenRouter(baseMessages);
-    const parsed = tryParse(firstRaw);
-    if (parsed) return NextResponse.json(parsed);
+    const first = tryParse(firstRaw);
+    if (first.data) return NextResponse.json(first.data);
 
     const retryRaw = await callOpenRouter([
       ...baseMessages,
+      { role: "assistant", content: firstRaw },
       {
         role: "user",
-        content:
-          "Tu respuesta anterior no era JSON válido con la forma { reply, actions }. Responde de nuevo, únicamente con ese JSON.",
+        content: `Tu respuesta anterior tuvo este problema:\n${first.error}\n\nCorrígelo y responde de nuevo con ÚNICAMENTE el JSON { reply, actions } completo y válido. Si tu respuesta anterior incluía varias instrucciones del usuario, no descartes ninguna al corregir — conserva todas las acciones que sí eran correctas y arregla solo lo que falló.`,
       },
     ]);
-    const retryParsed = tryParse(retryRaw);
-    return NextResponse.json(retryParsed ?? FALLBACK_RESPONSE);
+    const retry = tryParse(retryRaw);
+    return NextResponse.json(retry.data ?? FALLBACK_RESPONSE);
   } catch (error) {
     if (error instanceof OpenRouterConfigError) {
       return NextResponse.json({ error: error.message }, { status: 503 });

@@ -29,6 +29,7 @@ export async function callOpenRouter(messages: OpenRouterMessage[]): Promise<str
       messages,
       response_format: { type: "json_object" },
       temperature: 0.3,
+      max_tokens: 4000,
     }),
   });
 
