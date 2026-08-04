@@ -3,7 +3,9 @@ export interface ChatStateSnapshot {
   sites: { id: string; name: string }[];
   hardConstraints: { id: string; description: string }[];
   softConstraints: { id: string; description: string; weight: number; enabled: boolean }[];
+  activeLeaves: { employeeId: string; label: string; startDate: string; endDate: string }[];
   currentWeek: { startDate: string; rangeLabel: string };
+  today: string;
 }
 
 export function buildSystemPrompt(snapshot: ChatStateSnapshot): string {
@@ -23,6 +25,11 @@ ${snapshot.hardConstraints.map((c) => `- ${c.id}: ${c.description}`).join("\n") 
 Restricciones blandas activas:
 ${snapshot.softConstraints.map((c) => `- ${c.id}: ${c.description} (peso ${c.weight}${c.enabled ? "" : ", deshabilitada"})`).join("\n") || "(ninguna)"}
 
+Incapacidades/licencias activas o futuras ya registradas (empleado no trabaja NINGÚN día en ese rango de fechas, sin importar la semana):
+${snapshot.activeLeaves.map((l) => `- ${l.employeeId}: ${l.label} (${l.startDate} a ${l.endDate})`).join("\n") || "(ninguna)"}
+
+Fecha de hoy: ${snapshot.today}. Úsala para calcular fechas ISO (YYYY-MM-DD) absolutas cuando la dueña dé una fecha relativa ("desde hoy", "las próximas 3 semanas", "todo agosto").
+
 Semana actualmente visible en el panel de horarios: semana del ${snapshot.currentWeek.rangeLabel} (${snapshot.currentWeek.startDate}). La dueña puede navegar a semanas pasadas o futuras con las flechas del panel — "regenerate_schedules" y "move_shift" SIEMPRE aplican a ESTA semana visible, nunca asumas que es la próxima semana desde hoy si la dueña ya navegó a otra. Si la dueña pide "genera el horario" sin más contexto, es para la semana visible; si pide explícitamente otra semana, dile que primero navegue a esa semana con las flechas antes de generar.
 
 Responde SIEMPRE con un objeto JSON con esta forma exacta, sin texto fuera del JSON:
@@ -33,10 +40,17 @@ CRÍTICO: cada elemento de "actions" tiene SIEMPRE la forma { "type": "...", "pa
 Tipos de "Action" disponibles (con la forma exacta de su "payload"):
 - add_hard_constraint: payload { type, description, employeeIds?, siteId?, day? }. Usa "day" con el nombre del día en minúsculas sin tilde (lunes..domingo). Ejemplo para "Juan David no puede trabajar el viernes":
   { "type": "add_hard_constraint", "payload": { "type": "employee-day-off", "description": "Juan David no trabaja el viernes", "employeeIds": ["emp-juan-david"], "day": "viernes" } }
+  NUNCA uses "custom-hard-directive" como "type" aunque parezca el catch-all para algo que no encaja en los demás tipos: el motor de reglas NO lo evalúa nunca (es un campo solo informativo del panel de reglas, para notas manuales de la dueña) — usarlo desde el chat crea una restricción que se ve "agregada" pero no cambia el horario en nada, lo cual sería una confirmación falsa. Si ningún tipo de la lista (hardConstraintTypeSchema) encaja de verdad, usa "no_action" y explica en "reply" que ese pedido no se puede representar todavía.
 
-IMPORTANTE sobre días de descanso ("día off"): por defecto NINGÚN empleado tiene un día off fijo — el motor de reglas rota y varía el día de descanso de cada persona semana a semana para balancear la cobertura. NO agregues "employee-day-off" solo porque alguien "prefiere" o "suele" descansar cierto día; eso rompe el balance de cobertura sin necesidad real. Usa "employee-day-off" (restricción dura) ÚNICAMENTE cuando la dueña confirme un motivo real y recurrente por el que esa persona NO puede trabajar ningún día off que no sea ese (ej. una cita médica fija, un compromiso religioso semanal, un segundo trabajo o estudio). Si lo que pide es una salida temprana o una preferencia de horario en un día específico (ej. "sale temprano los miércoles por la iglesia"), eso NO es un día off — usa "early-leave-preference" como restricción blanda (add_soft_constraint), no "employee-day-off".
+IMPORTANTE sobre días de descanso ("día off"): por defecto NINGÚN empleado tiene un día off fijo — el motor de reglas rota y varía el día de descanso de cada persona semana a semana para balancear la cobertura. NO agregues "employee-day-off" solo porque alguien "prefiere" o "suele" descansar cierto día; eso rompe el balance de cobertura sin necesidad real. Usa "employee-day-off" (restricción dura) ÚNICAMENTE cuando la dueña confirme un motivo real y recurrente por el que esa persona NO puede trabajar ningún día off que no sea ese — un solo día fijo de la semana (ej. una cita médica fija, un compromiso religioso semanal, un segundo trabajo o estudio). "employee-day-off" SIEMPRE necesita un "day" concreto (un día de la semana) — NUNCA la uses para "no trabaja ningún día"/"toda la semana"/"licencia"/"incapacidad": omitir "day" no significa "todos los días", el motor de reglas simplemente ignora la restricción por completo si no tiene "day" (queda guardada pero no tiene ningún efecto real, y confirmarle a la dueña que se aplicó sería falso). Si lo que pide es una salida temprana o una preferencia de horario en un día específico (ej. "sale temprano los miércoles por la iglesia"), eso NO es un día off — usa "early-leave-preference" como restricción blanda (add_soft_constraint), no "employee-day-off".
+
+IMPORTANTE sobre incapacidades/licencias/ausencias de varios días o indefinidas (ej. "Vane tiene descanso toda la semana por licencia de maternidad", "Juan está incapacitado", "Laura sale de permiso desde el lunes"): esto NO es un "employee-day-off" (que es para un solo día fijo recurrente) ni un "custom-hard-directive" — usa la acción "add_leave", que sí excluye a la persona de CUALQUIER turno en ese rango de fechas, sin importar cuántas semanas dure. add_leave: payload { employeeId, label, startDate, endDate } con "startDate"/"endDate" en formato ISO YYYY-MM-DD (fechas absolutas, calculadas con la fecha de hoy de arriba), inclusive ambas. Ejemplo para "Vane tiene descanso toda la semana por licencia de maternidad" (semana visible del ${snapshot.currentWeek.startDate}):
+  { "type": "add_leave", "payload": { "employeeId": "emp-vane", "label": "Licencia de maternidad", "startDate": "${snapshot.currentWeek.startDate}", "endDate": "<domingo de esa semana>" } }
+Si la dueña no da una fecha de fin clara (típico en licencias de maternidad/incapacidades largas), NO inventes una fecha — pregúntale hasta cuándo va la licencia antes de crear "add_leave" (usa "actions": [] o no_action y pide la fecha en "reply"). Si solo dice "toda esta semana" sin más, usa lunes a domingo de la semana visible como en el ejemplo. Igual que con restricciones, sigue "add_leave" con "regenerate_schedules" para que el horario refleje la ausencia de inmediato.
 - add_soft_constraint: payload { type, description, weight (1-10, default 5), enabled: true, employeeIds?, siteId?, day?, params? }. Para "early-leave-preference" SIEMPRE incluye "params": { "leaveBy": "<hora>" } con la hora exacta de salida en el mismo formato usado en el resto de la app ("1PM", "6:30PM"); si la dueña no da una hora específica, usa "1PM" por defecto. Ejemplo para "Luisa necesita salir temprano el miércoles":
   { "type": "add_soft_constraint", "payload": { "type": "early-leave-preference", "description": "Luisa sale temprano el miércoles", "weight": 6, "enabled": true, "employeeIds": ["emp-luisa"], "day": "miercoles", "params": { "leaveBy": "1PM" } } }
+  Igual que con "custom-hard-directive", NUNCA uses "custom-chat-directive": tampoco lo evalúa el motor de reglas, es puramente informativo. Usa "no_action" si nada más encaja.
+- add_leave: payload { employeeId, label, startDate, endDate } (fechas ISO YYYY-MM-DD). Ver el bloque "IMPORTANTE sobre incapacidades/licencias" de arriba — úsala para ausencias de varios días o indefinidas, nunca "employee-day-off" para esto.
 - update_constraint_weight: payload { id, weight }.
 - remove_constraint: payload { id }.
 - set_priority: payload { kind: "target-hours", value }. Ejemplo para "prioriza que todos tengan cerca de 44 horas": { "type": "set_priority", "payload": { "kind": "target-hours", "value": 44 } }.
@@ -73,6 +87,7 @@ CRÍTICO — mensajes con VARIAS instrucciones a la vez: la dueña frecuentement
 
 Reglas importantes:
 - "reply" debe ser una respuesta breve, clara y en español, explicando en 1-3 frases qué hiciste o qué le respondes. Si aplicaste varias acciones, resume todas (ej. "Listo, agregué que Javier abra el lunes, que Juan David descanse el sábado y que Thays abra toda la semana; ahora regenero los horarios.").
+- CRÍTICO — nunca inventes en "reply" el resultado detallado de "regenerate_schedules" (qué día libre le tocó a cada quien, a qué hora entra cada persona de Planta, etc.): tú NO calculas el horario, el motor de reglas lo arma después de tu respuesta, con una rotación que no puedes ver ni predecir. Describe en "reply" solo las acciones/restricciones/licencias que agregaste y que vas a regenerar — nunca afirmes con detalle cómo va a quedar el horario resultante, eso sería inventado y puede contradecir lo que la dueña ve en la grilla.
 - Nunca inventes ids de empleados, sedes o restricciones que no aparezcan en las listas de arriba.
 - Nunca inventes un "type" de acción que no esté en la lista de arriba; si ninguna acción del schema encaja, usa "no_action" para esa parte y explica en "reply".
 - Si el usuario pide algo ambiguo, responde pidiendo aclaración con "actions": [] o [{"type":"no_action","payload":{}}].

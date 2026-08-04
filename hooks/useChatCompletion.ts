@@ -4,6 +4,7 @@ import { useEmployeesStore } from "@/stores/useEmployeesStore";
 import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useSitesStore } from "@/stores/useSitesStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
+import { useLeavesStore } from "@/stores/useLeavesStore";
 import { applyChatActions } from "@/lib/ai/applyChatActions";
 import { formatWeekRangeEs } from "@/lib/time/week";
 import type { ChatStateSnapshot } from "@/lib/ai/systemPrompt";
@@ -14,6 +15,8 @@ function buildSnapshot(): ChatStateSnapshot {
   const { hardConstraints, softConstraints } = useConstraintsStore.getState();
   const { sites } = useSitesStore.getState();
   const { weekStartDate } = useScheduleStore.getState();
+  const { leaves } = useLeavesStore.getState();
+  const today = new Date().toISOString().slice(0, 10);
   return {
     employees: employees.map((e) => ({ id: e.id, name: e.name, area: e.area, status: e.status })),
     sites: sites.map((s) => ({ id: s.id, name: s.name })),
@@ -24,7 +27,17 @@ function buildSnapshot(): ChatStateSnapshot {
       weight: c.weight,
       enabled: c.enabled,
     })),
+    // Solo licencias que no terminaron ya, para no inflar el prompt con incapacidades pasadas.
+    activeLeaves: leaves
+      .filter((l) => l.endDate >= today)
+      .map((l) => ({
+        employeeId: l.employeeId,
+        label: l.label,
+        startDate: l.startDate,
+        endDate: l.endDate,
+      })),
     currentWeek: { startDate: weekStartDate, rangeLabel: formatWeekRangeEs(weekStartDate) },
+    today,
   };
 }
 

@@ -14,6 +14,8 @@ const dayOfWeekSchema = z.enum([
 
 const siteIdSchema = z.enum(["calle-93", "calle-81"]);
 
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Debe ser una fecha ISO YYYY-MM-DD");
+
 const serviceTaskTypeSchema = z.enum(["caja", "servicio", "rappi-vitrina", "bebidas"]);
 
 const hardConstraintTypeSchema = z.enum([
@@ -58,9 +60,17 @@ const addSoftConstraintPayloadSchema = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
 });
 
+const addLeavePayloadSchema = z.object({
+  employeeId: z.string(),
+  label: z.string(),
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+});
+
 export const chatActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("add_hard_constraint"), payload: addHardConstraintPayloadSchema }),
   z.object({ type: z.literal("add_soft_constraint"), payload: addSoftConstraintPayloadSchema }),
+  z.object({ type: z.literal("add_leave"), payload: addLeavePayloadSchema }),
   z.object({ type: z.literal("remove_constraint"), payload: z.object({ id: z.string() }) }),
   z.object({
     type: z.literal("update_constraint_weight"),

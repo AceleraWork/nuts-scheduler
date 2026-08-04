@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { callOpenRouter, OpenRouterConfigError, type OpenRouterMessage } from "@/lib/ai/openrouter";
 import { buildSystemPrompt, type ChatStateSnapshot } from "@/lib/ai/systemPrompt";
 import { chatResponseSchema, type ChatResponse } from "@/lib/ai/chatActionSchema";
+import { findSemanticIssues } from "@/lib/ai/constraintValidation";
 
 interface ChatRequestBody {
   messages: { role: "user" | "assistant"; content: string }[];
@@ -44,21 +45,39 @@ export async function POST(request: Request) {
     ...body.messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
-  try {
-    const firstRaw = await callOpenRouter(baseMessages);
-    const first = tryParse(firstRaw);
-    if (first.data) return NextResponse.json(first.data);
-
+  async function retryWithFeedback(firstRaw: string, problem: string): Promise<ChatResponse> {
     const retryRaw = await callOpenRouter([
       ...baseMessages,
       { role: "assistant", content: firstRaw },
       {
         role: "user",
-        content: `Tu respuesta anterior tuvo este problema:\n${first.error}\n\nCorrígelo y responde de nuevo con ÚNICAMENTE el JSON { reply, actions } completo y válido. Si tu respuesta anterior incluía varias instrucciones del usuario, no descartes ninguna al corregir — conserva todas las acciones que sí eran correctas y arregla solo lo que falló.`,
+        content: `Tu respuesta anterior tuvo este problema:\n${problem}\n\nCorrígelo y responde de nuevo con ÚNICAMENTE el JSON { reply, actions } completo y válido. Si tu respuesta anterior incluía varias instrucciones del usuario, no descartes ninguna al corregir — conserva todas las acciones que sí eran correctas y arregla solo lo que falló.`,
       },
     ]);
     const retry = tryParse(retryRaw);
-    return NextResponse.json(retry.data ?? FALLBACK_RESPONSE);
+    return retry.data ?? FALLBACK_RESPONSE;
+  }
+
+  try {
+    const firstRaw = await callOpenRouter(baseMessages);
+    const first = tryParse(firstRaw);
+    if (!first.data) {
+      return NextResponse.json(await retryWithFeedback(firstRaw, first.error));
+    }
+
+    // La forma del JSON es válida, pero puede incluir acciones que el motor de horarios
+    // nunca aplica (ver constraintValidation.ts) — un solo reintento pidiéndole al modelo
+    // que las corrija, igual que con errores de forma. Si el reintento también falla en
+    // esto, se devuelve igual: applyChatActions.ts muestra una advertencia visible en vez
+    // de perder el resto de acciones correctas por un reintento en bucle.
+    const issues = findSemanticIssues(first.data);
+    if (issues.length === 0) return NextResponse.json(first.data);
+    return NextResponse.json(
+      await retryWithFeedback(
+        firstRaw,
+        `Estas acciones no van a tener ningún efecto real en el horario:\n${issues.join("\n")}`
+      )
+    );
   } catch (error) {
     if (error instanceof OpenRouterConfigError) {
       return NextResponse.json({ error: error.message }, { status: 503 });

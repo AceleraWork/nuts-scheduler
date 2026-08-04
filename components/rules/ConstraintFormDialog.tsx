@@ -34,6 +34,7 @@ import {
   TYPES_WITH_DAYS_PARAM,
   TYPES_WITH_SINGLE_DAY_FIELD,
   TYPES_WITH_SITE_FIELD,
+  TYPES_REQUIRING_DAY,
   CUSTOM_TYPES,
 } from "@/lib/constraints/labels";
 import { DAYS_OF_WEEK, DAY_LABELS } from "@/types";
@@ -147,6 +148,8 @@ export function ConstraintFormDialog({
   const usesSingleDayField = TYPES_WITH_SINGLE_DAY_FIELD.includes(type);
   const usesDaysParam = TYPES_WITH_DAYS_PARAM.includes(type);
   const isCustom = CUSTOM_TYPES.includes(type);
+  const requiresDay = TYPES_REQUIRING_DAY.includes(type);
+  const missingRequiredDay = requiresDay && days.length === 0;
   const needsHeadcount = type === "site-reinforcement";
   const needsTargetHours = type === "target-weekly-hours";
   const needsLeaveBy = type === "early-leave-preference";
@@ -166,7 +169,7 @@ export function ConstraintFormDialog({
   }
 
   async function handleSave() {
-    if (!description.trim()) return;
+    if (!description.trim() || missingRequiredDay) return;
     setSaving(true);
     try {
       if (editing) {
@@ -310,6 +313,10 @@ export function ConstraintFormDialog({
                 onChange={(e) => setCustomLabel(e.target.value)}
                 placeholder="Ej. No mezclar turnos con capacitación de proveedor"
               />
+              <p className="text-xs text-[#8a6400]">
+                Este tipo es solo informativo: queda guardado como nota, pero el motor de
+                horarios no lo aplica automáticamente al armar los turnos.
+              </p>
             </div>
           )}
 
@@ -347,7 +354,7 @@ export function ConstraintFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Días aplicables (opcional)</Label>
+            <Label>Días aplicables {requiresDay ? "(requerido)" : "(opcional)"}</Label>
             <div className="flex flex-wrap gap-1.5">
               {DAYS_OF_WEEK.map((d) => (
                 <button
@@ -365,6 +372,12 @@ export function ConstraintFormDialog({
                 </button>
               ))}
             </div>
+            {missingRequiredDay && (
+              <p className="text-xs text-danger">
+                Este tipo necesita al menos un día seleccionado — sin uno no tiene ningún
+                efecto en el horario.
+              </p>
+            )}
           </div>
 
           {needsLeaveBy && (
@@ -450,7 +463,7 @@ export function ConstraintFormDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={!description.trim() || saving}>
+          <Button onClick={handleSave} disabled={!description.trim() || missingRequiredDay || saving}>
             {saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear"}
           </Button>
         </DialogFooter>

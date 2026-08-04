@@ -12,6 +12,7 @@ import { useConstraintsStore } from "@/stores/useConstraintsStore";
 import { useEmployeesStore } from "@/stores/useEmployeesStore";
 import { useScheduleStore } from "@/stores/useScheduleStore";
 import { getSiteName } from "@/stores/useSitesStore";
+import { CUSTOM_TYPES, TYPES_REQUIRING_DAY } from "@/lib/constraints/labels";
 import { DAY_LABELS } from "@/types";
 import type { HardConstraint, SoftConstraint } from "@/types";
 
@@ -38,6 +39,16 @@ export function RulesPanel() {
   function customLabel(c: HardConstraint | SoftConstraint): string | null {
     if (c.type !== "custom-hard-directive" && c.type !== "custom-chat-directive") return null;
     return (c.params?.customLabel as string) || null;
+  }
+
+  /** Detecta constraints que el motor de horarios nunca evalúa: tipos "personalizados"
+   * (siempre informativos) o tipos que necesitan un "day" para tener efecto pero se
+   * guardaron sin uno (posible con datos creados antes de exigir el día en el formulario,
+   * o por el chat). Ver hardRules.ts/softRules.ts: ambos casos evaluan a [] siempre. */
+  function isNoOp(c: HardConstraint | SoftConstraint): boolean {
+    if (CUSTOM_TYPES.includes(c.type)) return true;
+    if (TYPES_REQUIRING_DAY.includes(c.type) && !c.day) return true;
+    return false;
   }
 
   function scopeLabel(c: HardConstraint | SoftConstraint): string | null {
@@ -107,11 +118,18 @@ export function RulesPanel() {
                   <Card key={c.id} className="gap-1 p-3 ring-border">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        {customLabel(c) && (
-                          <Badge variant="outline" className="mb-1 border-border text-ink-mute">
-                            {customLabel(c)}
-                          </Badge>
-                        )}
+                        <div className="mb-1 flex flex-wrap gap-1">
+                          {customLabel(c) && (
+                            <Badge variant="outline" className="border-border text-ink-mute">
+                              {customLabel(c)}
+                            </Badge>
+                          )}
+                          {isNoOp(c) && (
+                            <Badge variant="outline" className="border-danger/30 bg-danger-soft text-danger">
+                              Sin efecto en el horario
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-ink">{c.description}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-0.5">
@@ -153,11 +171,18 @@ export function RulesPanel() {
                   <Card key={c.id} className="gap-1 p-3 ring-border">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        {customLabel(c) && (
-                          <Badge variant="outline" className="mb-1 border-border text-ink-mute">
-                            {customLabel(c)}
-                          </Badge>
-                        )}
+                        <div className="mb-1 flex flex-wrap gap-1">
+                          {customLabel(c) && (
+                            <Badge variant="outline" className="border-border text-ink-mute">
+                              {customLabel(c)}
+                            </Badge>
+                          )}
+                          {isNoOp(c) && (
+                            <Badge variant="outline" className="border-danger/30 bg-danger-soft text-danger">
+                              Sin efecto en el horario
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-ink">{c.description}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">

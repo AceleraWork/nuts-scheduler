@@ -69,3 +69,13 @@ export const CUSTOM_TYPES: (HardConstraintType | SoftConstraintType)[] = [
   "custom-hard-directive",
   "custom-chat-directive",
 ];
+
+/** Tipos cuyo `evaluate()` en hardRules.ts/softRules.ts vuelve [] sin un `day` (ver
+ * "employee-day-off" en hardRules.ts y "early-leave-preference" en softRules.ts) — sin día,
+ * la restricción se guarda pero no tiene ningún efecto real en el horario. Hoy coincide con
+ * TYPES_WITH_SINGLE_DAY_FIELD, pero representa una razón distinta (semántica del motor, no
+ * cómo se arma el formulario), así que se mantiene aparte. */
+export const TYPES_REQUIRING_DAY: (HardConstraintType | SoftConstraintType)[] = [
+  "employee-day-off",
+  "early-leave-preference",
+];
